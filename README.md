@@ -29,6 +29,7 @@ The app launches in standalone mode with offline shell fallback at `/offline`.
    - `supabase/migrations/20260717000000_homeos_schema.sql`
    - `supabase/migrations/20260717000001_fix_household_create_rls.sql` (required if you already ran the first migration before this fix)
    - `supabase/migrations/20260717000002_realtime_replica_identity.sql` (required for reliable live item sync)
+   - `supabase/migrations/20260717000003_invite_lookup_rpc.sql` (required so invite links work for guests)
 3. Enable Email auth in Supabase. Add redirect URLs:
    - `http://localhost:3000/auth/callback`
 4. Install and run:

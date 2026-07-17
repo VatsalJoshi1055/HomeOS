@@ -32,7 +32,10 @@ export async function signupAction(
       password,
       options: {
         emailRedirectTo: `${siteUrl}/auth/callback`,
-        data: { full_name: fullName },
+        data: {
+          full_name: fullName,
+          ...(inviteToken ? { invite_token: inviteToken } : {}),
+        },
       },
     })
 
@@ -50,28 +53,25 @@ export async function signupAction(
       { onConflict: "id" }
     )
 
-    if (inviteToken) {
-      const { data: invite } = await supabase
-        .from("household_invites")
-        .select("*")
-        .eq("token", inviteToken)
-        .eq("status", "PENDING")
-        .maybeSingle()
+    // No session yet (email confirmation required) — join happens in /auth/callback
+    if (!data.session) {
+      return {
+        success: true,
+        message: "Check your email to confirm your account, then sign in.",
+      }
+    }
 
-      if (invite) {
+    if (inviteToken) {
+      const { error: acceptError } = await supabase.rpc(
+        "accept_household_invite",
+        { p_token: inviteToken }
+      )
+
+      if (!acceptError) {
         await supabase
           .from("profiles")
-          .update({
-            household_id: invite.household_id,
-            role: "MEMBER",
-            full_name: fullName,
-          })
+          .update({ full_name: fullName })
           .eq("id", data.user.id)
-
-        await supabase
-          .from("household_invites")
-          .update({ status: "ACCEPTED" })
-          .eq("id", invite.id)
 
         revalidatePath("/", "layout")
         redirect("/dashboard")

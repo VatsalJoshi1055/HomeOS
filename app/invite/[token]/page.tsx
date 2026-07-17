@@ -2,6 +2,15 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { SignupForm } from "@/components/auth/signup-form"
 
+type PendingInvite = {
+  id: string
+  household_id: string
+  email: string
+  token: string
+  status: string
+  household_name: string | null
+}
+
 export default async function InvitePage({
   params,
 }: {
@@ -10,20 +19,32 @@ export default async function InvitePage({
   const { token } = await params
   const supabase = await createClient()
 
-  const { data: invite } = await supabase
-    .from("household_invites")
-    .select("*, households(name)")
-    .eq("token", token)
-    .eq("status", "PENDING")
-    .maybeSingle()
+  const { data: inviteRows, error } = await supabase.rpc(
+    "get_pending_invite_by_token",
+    { p_token: token }
+  )
 
-  if (!invite) {
+  const invite = (Array.isArray(inviteRows) ? inviteRows[0] : inviteRows) as
+    | PendingInvite
+    | null
+    | undefined
+
+  if (error || !invite) {
+    const missingRpc =
+      error?.message?.includes("get_pending_invite_by_token") ||
+      error?.code === "PGRST202" ||
+      error?.code === "42883"
+
     return (
       <div className="flex min-h-svh items-center justify-center p-6">
         <div className="max-w-sm text-center">
-          <h1 className="text-xl font-semibold">Invite not found</h1>
+          <h1 className="text-xl font-semibold">
+            {missingRpc ? "Invite setup incomplete" : "Invite not found"}
+          </h1>
           <p className="mt-2 text-sm text-gray-500">
-            This invite may have expired or already been used.
+            {missingRpc
+              ? "Run migration 20260717000003_invite_lookup_rpc.sql in the Supabase SQL Editor, then try this link again."
+              : "This invite may have expired or already been used."}
           </p>
         </div>
       </div>
@@ -35,19 +56,16 @@ export default async function InvitePage({
   } = await supabase.auth.getUser()
 
   if (user) {
-    await supabase
-      .from("profiles")
-      .update({ household_id: invite.household_id, role: "MEMBER" })
-      .eq("id", user.id)
-    await supabase
-      .from("household_invites")
-      .update({ status: "ACCEPTED" })
-      .eq("id", invite.id)
-    redirect("/dashboard")
+    const { error: acceptError } = await supabase.rpc(
+      "accept_household_invite",
+      { p_token: token }
+    )
+    if (!acceptError) {
+      redirect("/dashboard")
+    }
   }
 
-  const householdName =
-    (invite.households as { name?: string } | null)?.name ?? "a household"
+  const householdName = invite.household_name ?? "a household"
 
   return (
     <div className="flex min-h-svh items-center justify-center bg-gray-50/50 px-6 py-12">
