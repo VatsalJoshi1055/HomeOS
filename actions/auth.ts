@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
+import { ensureHouseholdAfterAuth } from "@/lib/ensure-membership"
 import type { ActionState } from "@/types/database"
 
 export async function signupAction(
@@ -53,48 +54,34 @@ export async function signupAction(
       { onConflict: "id" }
     )
 
-    // No session yet (email confirmation required) — join happens in /auth/callback
+    // No session yet (email confirmation required) — join/create on confirm or next login
     if (!data.session) {
       return {
         success: true,
-        message: "Check your email to confirm your account, then sign in.",
+        message: inviteToken
+          ? "Check your email to confirm your account, then sign in to join the household."
+          : "Check your email to confirm your account, then sign in.",
       }
     }
 
-    if (inviteToken) {
-      const { error: acceptError } = await supabase.rpc(
-        "accept_household_invite",
-        { p_token: inviteToken }
-      )
+    const membership = await ensureHouseholdAfterAuth(supabase, {
+      createIfMissing: !inviteToken,
+      householdName,
+    })
 
-      if (!acceptError) {
-        await supabase
-          .from("profiles")
-          .update({ full_name: fullName })
-          .eq("id", data.user.id)
-
-        revalidatePath("/", "layout")
-        redirect("/dashboard")
+    if (membership === "none" && inviteToken) {
+      return {
+        error:
+          "Account created but invite could not be accepted. Sign in again, or ask for a new invite.",
       }
     }
 
-    // Create household — first user becomes owner (RPC avoids RLS chicken-and-egg)
-    const { error: hErr } = await supabase.rpc(
-      "create_household_for_current_user",
-      { p_name: householdName }
-    )
-
-    if (hErr) {
+    if (membership === "none") {
       return {
         error:
           "Account created but household setup failed. Sign in and try again from onboarding.",
       }
     }
-
-    await supabase
-      .from("profiles")
-      .update({ full_name: fullName })
-      .eq("id", data.user.id)
 
     revalidatePath("/", "layout")
     redirect("/dashboard")
@@ -118,6 +105,9 @@ export async function loginAction(
     const supabase = await createClient()
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) return { error: error.message }
+
+    // Invitees who confirmed email often land on /login — join here.
+    await ensureHouseholdAfterAuth(supabase, { createIfMissing: false })
 
     revalidatePath("/", "layout")
     redirect("/dashboard")
