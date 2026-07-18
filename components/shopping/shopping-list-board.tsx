@@ -358,15 +358,15 @@ export function ShoppingListBoard({
           className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${
             live
               ? "bg-emerald-50 text-emerald-700"
-              : "bg-gray-100 text-gray-500"
+              : "bg-amber-50 text-amber-800"
           }`}
         >
           <span
             className={`size-1.5 rounded-full ${
-              live ? "animate-pulse bg-emerald-500" : "bg-gray-400"
+              live ? "animate-pulse bg-emerald-500" : "bg-amber-500"
             }`}
           />
-          {live ? "Live" : "Connecting…"}
+          {live ? "Live" : "Reconnecting…"}
         </span>
       </div>
 

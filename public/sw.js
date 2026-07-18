@@ -1,4 +1,4 @@
-const CACHE_NAME = "homeos-shell-v1"
+const CACHE_NAME = "homeos-shell-v2"
 const SHELL_URLS = [
   "/",
   "/login",
@@ -7,6 +7,26 @@ const SHELL_URLS = [
   "/icons/icon-192.png",
   "/icons/icon-512.png",
 ]
+
+function isShellAsset(pathname) {
+  return SHELL_URLS.includes(pathname) || pathname.startsWith("/icons/")
+}
+
+function shouldBypassCache(request, url) {
+  if (url.pathname.startsWith("/auth/")) return true
+  if (url.pathname.startsWith("/dashboard")) return true
+  if (url.pathname.startsWith("/invite")) return true
+  if (url.pathname.startsWith("/onboarding")) return true
+  if (url.pathname.startsWith("/_next/")) return true
+  if (url.pathname.includes("supabase")) return true
+
+  // Next.js App Router / RSC fetches must never be cache-first
+  if (request.headers.get("RSC") === "1") return true
+  if (request.headers.get("Next-Router-Prefetch") === "1") return true
+  if (request.headers.get("Next-Router-State-Tree")) return true
+
+  return false
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -37,22 +57,20 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return
 
   const url = new URL(request.url)
+  // Cross-origin (Supabase REST/Realtime WebSocket) — never intercept
   if (url.origin !== self.location.origin) return
 
-  // Never cache auth/API-ish dynamic routes aggressively
-  if (
-    url.pathname.startsWith("/auth/") ||
-    url.pathname.includes("supabase")
-  ) {
-    return
-  }
+  if (shouldBypassCache(request, url)) return
 
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const copy = response.clone()
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy))
+          // Only cache known offline shell navigations
+          if (isShellAsset(url.pathname) && response.ok) {
+            const copy = response.clone()
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy))
+          }
           return response
         })
         .catch(async () => {
@@ -62,6 +80,9 @@ self.addEventListener("fetch", (event) => {
     )
     return
   }
+
+  // Static shell assets only: cache-first. Everything else network-only.
+  if (!isShellAsset(url.pathname)) return
 
   event.respondWith(
     caches.match(request).then((cached) => {
