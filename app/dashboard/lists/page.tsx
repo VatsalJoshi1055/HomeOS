@@ -17,11 +17,11 @@ export default async function ListsPage() {
   const lists = await getListsWithStats()
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="page-stack">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight">Shopping Lists</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="page-title">Grocery Lists</h1>
+          <p className="text-xs text-muted-foreground sm:text-sm">
             Multiple lists for groceries, parties, stores and more.
           </p>
         </div>
@@ -31,18 +31,20 @@ export default async function ListsPage() {
       </div>
 
       {lists.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border/60 bg-white py-20 text-center">
-          <ShoppingBag className="mx-auto size-12 text-gray-200" />
-          <p className="mt-3 font-medium text-gray-700">No lists yet</p>
-          <p className="mt-1 text-sm text-gray-400">
+        <div className="rounded-xl border border-dashed border-border/60 bg-white py-12 text-center sm:py-20">
+          <ShoppingBag className="mx-auto size-10 text-gray-200 sm:size-12" />
+          <p className="mt-2 text-sm font-medium text-gray-700 sm:mt-3">
+            No lists yet
+          </p>
+          <p className="mt-1 text-xs text-gray-400 sm:text-sm">
             Create Monthly Grocery, Vegetables, Costco, or anything you need.
           </p>
-          <div className="mt-4 flex justify-center">
+          <div className="mt-3 flex justify-center sm:mt-4">
             <CreateListDialog />
           </div>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-2 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
           {lists.map((list) => {
             const pct =
               list.total_items === 0
@@ -52,9 +54,9 @@ export default async function ListsPage() {
             return (
               <Link key={list.id} href={`/dashboard/lists/${list.id}`}>
                 <Card className="h-full transition-shadow active:scale-[0.99] hover:shadow-md">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      <ShoppingBag className="size-5 shrink-0 text-amber-500" />
+                  <CardHeader className="pb-2 sm:pb-3">
+                    <CardTitle className="flex items-center gap-2 text-[0.9375rem] sm:text-lg">
+                      <ShoppingBag className="size-4 shrink-0 text-amber-500 sm:size-5" />
                       <span className="break-words">{list.name}</span>
                     </CardTitle>
                     <CardDescription>

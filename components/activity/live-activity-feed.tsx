@@ -248,21 +248,21 @@ export function LiveActivityFeed({
             No activity yet. Start shopping together!
           </p>
         ) : (
-          <ol className="relative ml-3 space-y-0 border-l border-amber-200">
+          <ol className="relative ml-2.5 space-y-0 border-l border-amber-200 sm:ml-3">
             {activity.map((a) => (
-              <li key={a.id} className="relative pb-8 pl-8 last:pb-0">
-                <span className="absolute top-0 -left-3 flex size-6 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white ring-4 ring-white">
+              <li key={a.id} className="relative pb-4 pl-6 last:pb-0 sm:pb-8 sm:pl-8">
+                <span className="absolute top-0 -left-2.5 flex size-5 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-white ring-2 ring-white sm:-left-3 sm:size-6 sm:text-[10px] sm:ring-4">
                   {initials(a.actor_name).slice(0, 1)}
                 </span>
-                <div className="flex items-start gap-3">
-                  <Avatar className="size-9">
+                <div className="flex items-start gap-2 sm:gap-3">
+                  <Avatar className="hidden size-9 sm:flex">
                     <AvatarFallback>{initials(a.actor_name)}</AvatarFallback>
                   </Avatar>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-gray-900 sm:text-sm">
                       {a.message}
                     </p>
-                    <p className="mt-0.5 text-xs text-gray-400">
+                    <p className="mt-0.5 text-[11px] text-gray-400 sm:text-xs">
                       <RelativeTime value={a.created_at} />
                       {a.list_name ? ` · ${a.list_name}` : ""}
                     </p>

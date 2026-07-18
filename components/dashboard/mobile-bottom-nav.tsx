@@ -27,15 +27,15 @@ export function MobileBottomNav() {
               <Link
                 href={item.href}
                 className={cn(
-                  "flex h-full min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 px-0.5 text-[9px] font-medium transition-colors sm:text-[10px]",
+                  "flex h-full min-h-11 min-w-0 flex-col items-center justify-center gap-0 px-0.5 text-[9px] font-medium leading-none transition-colors",
                   active ? "text-amber-600" : "text-gray-400"
                 )}
               >
                 <item.icon
-                  className={cn("size-5 shrink-0", active && "stroke-[2.25px]")}
+                  className={cn("size-[18px] shrink-0", active && "stroke-[2.25px]")}
                   aria-hidden
                 />
-                <span className="max-w-full truncate">{item.shortTitle}</span>
+                <span className="mt-0.5 max-w-full truncate">{item.shortTitle}</span>
               </Link>
             </li>
           )

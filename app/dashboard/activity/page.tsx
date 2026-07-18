@@ -11,10 +11,10 @@ export default async function ActivityPage() {
   ])
 
   return (
-    <div className="space-y-6">
+    <div className="page-stack">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Activity</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="page-title">Activity</h1>
+        <p className="text-xs text-muted-foreground sm:text-sm">
           A live timeline of everything your household changed.
         </p>
       </div>

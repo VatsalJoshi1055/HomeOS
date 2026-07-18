@@ -349,13 +349,13 @@ export function ShoppingListBoard({
   }
 
   return (
-    <div className="space-y-2 sm:space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <p className="min-w-0 flex-1 text-xs text-gray-500">
+    <div className="space-y-1.5 sm:space-y-4">
+      <div className="flex items-center justify-end gap-2 sm:justify-between">
+        <p className="hidden min-w-0 flex-1 text-xs text-gray-500 sm:block">
           Live sync with your household
         </p>
         <span
-          className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${
+          className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium sm:gap-1.5 sm:px-2.5 sm:py-1 sm:text-[11px] ${
             live
               ? "bg-emerald-50 text-emerald-700"
               : "bg-amber-50 text-amber-800"
@@ -370,24 +370,24 @@ export function ShoppingListBoard({
         </span>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-1.5 sm:space-y-2">
         <div className="relative">
-          <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-gray-400" />
+          <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-gray-400 sm:left-3.5 sm:size-4" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search items…"
-            className="pl-10"
+            className="h-10 pl-9 sm:h-11 sm:pl-10"
             inputMode="search"
             enterKeyHint="search"
           />
         </div>
 
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value as FilterMode)}
-            className="h-11 min-w-0 rounded-xl border border-gray-200 bg-white px-2 text-xs sm:px-3 sm:text-sm"
+            className="h-9 min-w-0 rounded-lg border border-gray-200 bg-white px-1.5 text-[11px] sm:h-11 sm:rounded-xl sm:px-3 sm:text-sm"
             aria-label="Filter items"
           >
             <option value="all">All</option>
@@ -398,7 +398,7 @@ export function ShoppingListBoard({
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="h-11 min-w-0 rounded-xl border border-gray-200 bg-white px-2 text-xs sm:px-3 sm:text-sm"
+            className="h-9 min-w-0 rounded-lg border border-gray-200 bg-white px-1.5 text-[11px] sm:h-11 sm:rounded-xl sm:px-3 sm:text-sm"
             aria-label="Filter by category"
           >
             <option value="all">Category</option>
@@ -412,7 +412,7 @@ export function ShoppingListBoard({
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value as SortMode)}
-            className="h-11 min-w-0 rounded-xl border border-gray-200 bg-white px-2 text-xs sm:px-3 sm:text-sm"
+            className="h-9 min-w-0 rounded-lg border border-gray-200 bg-white px-1.5 text-[11px] sm:h-11 sm:rounded-xl sm:px-3 sm:text-sm"
             aria-label="Sort items"
           >
             <option value="order">Order</option>
@@ -422,19 +422,20 @@ export function ShoppingListBoard({
           </select>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+        <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:gap-2">
           {voiceSupported && (
             <Button
               type="button"
               variant="outline"
+              size="sm"
               onClick={() => void startVoice()}
-              className="gap-1.5"
+              className="h-10 min-h-10 gap-1 sm:h-11 sm:min-h-11"
               aria-pressed={listening}
             >
               {listening ? (
-                <MicOff className="size-4 animate-pulse text-red-500" />
+                <MicOff className="size-3.5 animate-pulse text-red-500 sm:size-4" />
               ) : (
-                <Mic className="size-4" />
+                <Mic className="size-3.5 sm:size-4" />
               )}
               {listening ? "Stop" : "Voice"}
             </Button>
@@ -443,6 +444,8 @@ export function ShoppingListBoard({
           <Button
             type="button"
             variant="outline"
+            size="sm"
+            className="h-10 min-h-10 sm:h-11 sm:min-h-11"
             onClick={() => {
               if (selectMode) exitSelectMode()
               else setSelectMode(true)
@@ -464,12 +467,12 @@ export function ShoppingListBoard({
 
       {listening && (
         <div
-          className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+          className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-sm"
           role="status"
           aria-live="polite"
         >
           <p className="font-medium">Listening…</p>
-          <p className="mt-1 break-words text-amber-800/80">
+          <p className="mt-0.5 break-words text-amber-800/80">
             {voicePreview ||
               "Say something like “milk and chicken and rice”"}
           </p>
@@ -477,15 +480,15 @@ export function ShoppingListBoard({
       )}
 
       {voiceSupported && !listening && (
-        <p className="text-xs leading-relaxed text-gray-500">
+        <p className="hidden text-xs leading-relaxed text-gray-500 sm:block">
           Tip: say <span className="font-medium text-gray-700">“and”</span>{" "}
           between items — e.g. “milk and chicken and rice”.
         </p>
       )}
 
       {(selectMode || selected.size > 0) && (
-        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5">
-          <span className="text-sm font-medium text-amber-800">
+        <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-2.5 py-1.5 sm:gap-2 sm:rounded-2xl sm:px-3 sm:py-2.5">
+          <span className="text-xs font-medium text-amber-800 sm:text-sm">
             {selected.size > 0
               ? `${selected.size} selected`
               : "Tap items to select"}
@@ -520,11 +523,11 @@ export function ShoppingListBoard({
         </div>
       )}
 
-      <div className="space-y-1.5 pb-[calc(var(--mobile-cta-height)+0.5rem)] lg:space-y-2.5 lg:pb-4">
+      <div className="space-y-1 pb-[calc(var(--mobile-cta-height)+0.35rem)] sm:space-y-1.5 lg:space-y-2.5 lg:pb-4">
         {visible.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border/60 bg-white px-4 py-10 text-center lg:py-14">
-            <p className="font-medium text-gray-700">No items yet</p>
-            <p className="mt-1 text-sm text-gray-400">
+          <div className="rounded-xl border border-dashed border-border/60 bg-white px-3 py-8 text-center sm:rounded-2xl sm:px-4 sm:py-10 lg:py-14">
+            <p className="text-sm font-medium text-gray-700">No items yet</p>
+            <p className="mt-0.5 text-xs text-gray-400 sm:text-sm">
               Add your first grocery item or try voice input.
             </p>
             {/* Desktop empty-state CTA; mobile uses sticky Add Item */}
@@ -540,20 +543,20 @@ export function ShoppingListBoard({
           visible.map((item) => (
             <div
               key={item.id}
-              className={`flex items-stretch gap-2.5 rounded-xl border bg-white p-2.5 shadow-sm transition-colors sm:gap-3 sm:rounded-2xl sm:p-4 ${
+              className={`flex min-h-11 items-center gap-1.5 rounded-lg border bg-white px-1.5 py-1 transition-colors sm:min-h-0 sm:gap-3 sm:rounded-2xl sm:p-4 sm:shadow-sm ${
                 selectMode && selected.has(item.id)
                   ? "border-amber-400 bg-amber-50/50"
-                  : "border-border/60"
-              } ${item.completed && !selectMode ? "opacity-65" : ""}`}
+                  : "border-border/50"
+              } ${item.completed && !selectMode ? "opacity-60" : ""}`}
             >
-              <div className="flex shrink-0 items-center self-stretch">
+              <div className="flex size-11 shrink-0 items-center justify-center">
                 <Checkbox
                   checked={selectMode ? selected.has(item.id) : item.completed}
                   onCheckedChange={() => {
                     if (selectMode) toggleSelect(item.id)
                     else toggle(item)
                   }}
-                  className="size-8 rounded-xl sm:size-7"
+                  className="size-5 rounded-md sm:size-7 sm:rounded-lg"
                   aria-label={
                     selectMode
                       ? `Select ${item.title}`
@@ -566,15 +569,15 @@ export function ShoppingListBoard({
 
               <button
                 type="button"
-                className="min-w-0 flex-1 py-0.5 text-left"
+                className="min-h-11 min-w-0 flex-1 py-1 text-left sm:min-h-0 sm:py-0.5"
                 onClick={() => {
                   if (selectMode) toggleSelect(item.id)
                   else setEditing(item)
                 }}
               >
-                <div className="flex flex-wrap items-center gap-1.5">
+                <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                   <span
-                    className={`break-words text-[0.95rem] leading-snug font-medium sm:text-base ${
+                    className={`break-words text-[0.875rem] leading-tight font-medium sm:text-base sm:leading-snug ${
                       item.completed
                         ? "text-gray-400 line-through"
                         : "text-gray-900"
@@ -582,25 +585,29 @@ export function ShoppingListBoard({
                   >
                     {item.title}
                   </span>
+                  <span className="text-[11px] tabular-nums text-gray-500 sm:text-sm">
+                    {item.quantity}
+                    {item.unit ? ` ${item.unit}` : ""}
+                    {item.estimated_price > 0
+                      ? ` · ₹${Number(item.estimated_price).toFixed(0)}`
+                      : ""}
+                  </span>
                   {item.category && (
-                    <Badge variant="outline" className="text-[10px]">
+                    <Badge
+                      variant="outline"
+                      className="hidden h-4 px-1 text-[9px] sm:inline-flex sm:text-[10px]"
+                    >
                       {item.category}
                     </Badge>
                   )}
                   {item.priority === "HIGH" && (
-                    <Badge className="bg-red-100 text-[10px] text-red-700">
+                    <Badge className="h-4 bg-red-100 px-1 text-[9px] text-red-700 sm:text-[10px]">
                       High
                     </Badge>
                   )}
                 </div>
-                <p className="mt-0.5 text-xs text-gray-500 sm:mt-1 sm:text-sm">
-                  {item.quantity}
-                  {item.unit ? ` ${item.unit}` : ""}
-                  {item.estimated_price > 0
-                    ? ` · ₹${Number(item.estimated_price).toFixed(0)}`
-                    : ""}
-                </p>
-                <p className="mt-0.5 text-[11px] leading-snug text-gray-400 sm:text-xs sm:leading-relaxed">
+                {/* Attribution / notes — desktop & tablet only (saves ~2 lines/row on phones) */}
+                <p className="mt-0.5 hidden text-xs leading-relaxed text-gray-400 sm:block">
                   {item.creator_name
                     ? `Added by ${item.creator_name}`
                     : "Added"}
@@ -623,17 +630,18 @@ export function ShoppingListBoard({
                   ) : null}
                 </p>
                 {item.notes && (
-                  <p className="mt-1 break-words text-xs text-gray-400">
+                  <p className="mt-0.5 line-clamp-1 break-words text-[11px] text-gray-400 sm:mt-1 sm:line-clamp-none sm:text-xs">
                     {item.notes}
                   </p>
                 )}
               </button>
 
-              <div className="flex shrink-0 flex-col justify-center gap-1">
+              <div className="flex shrink-0 items-center sm:flex-col sm:justify-center sm:gap-1">
                 <Button
                   variant="ghost"
                   size="icon-sm"
                   title="Duplicate"
+                  className="hidden sm:inline-flex"
                   aria-label={`Duplicate ${item.title}`}
                   onClick={async () => {
                     await duplicateItemAction(item.id)
@@ -646,10 +654,11 @@ export function ShoppingListBoard({
                   variant="ghost"
                   size="icon-sm"
                   title="Delete"
+                  className="size-11 min-h-11 min-w-11 sm:size-10 sm:min-h-10 sm:min-w-10"
                   aria-label={`Delete ${item.title}`}
                   onClick={() => handleDelete(item)}
                 >
-                  <Trash2 className="size-4 text-red-400" />
+                  <Trash2 className="size-3.5 text-red-400 sm:size-4" />
                 </Button>
               </div>
             </div>
@@ -658,16 +667,16 @@ export function ShoppingListBoard({
       </div>
 
       <div
-        className="fixed inset-x-0 z-30 border-t border-border/60 bg-white/95 px-3 py-2.5 backdrop-blur-md lg:hidden"
+        className="fixed inset-x-0 z-30 border-t border-border/60 bg-white/95 px-2.5 py-1.5 backdrop-blur-md lg:hidden"
         style={{
           bottom: "calc(var(--mobile-nav-height) + var(--safe-bottom))",
         }}
       >
         <Button
-          className="h-11 w-full bg-amber-500 text-sm text-white hover:bg-amber-600 sm:text-base"
+          className="h-11 min-h-11 w-full bg-amber-500 text-sm text-white hover:bg-amber-600"
           onClick={() => setAddOpen(true)}
         >
-          <Plus className="mr-1 size-5" />
+          <Plus className="mr-1 size-4" />
           Add Item
         </Button>
       </div>

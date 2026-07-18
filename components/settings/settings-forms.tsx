@@ -24,7 +24,7 @@ export function SettingsForms({ profile }: { profile: Profile }) {
   )
 
   return (
-    <div className="space-y-4 lg:space-y-6">
+    <div className="page-stack">
       <Card>
         <CardHeader className="pb-3 lg:pb-6">
           <CardTitle className="text-base lg:text-lg">Profile</CardTitle>

@@ -36,20 +36,18 @@ export function ListWorkspace({
   )
 
   return (
-    <div className="space-y-3 lg:space-y-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-3">
+    <div className="page-stack">
+      <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-3">
         <div className="min-w-0 flex-1">
           <Link
             href="/dashboard/lists"
-            className="mb-1 inline-flex min-h-11 items-center gap-1 text-sm font-medium text-amber-600 hover:underline lg:mb-2"
+            className="mb-0.5 inline-flex min-h-9 items-center gap-0.5 text-xs font-medium text-amber-600 hover:underline sm:mb-1 sm:min-h-11 sm:text-sm"
           >
-            <ChevronLeft className="size-4 shrink-0" />
+            <ChevronLeft className="size-3.5 shrink-0 sm:size-4" />
             All lists
           </Link>
-          <h1 className="break-anywhere text-xl font-semibold tracking-tight lg:text-2xl">
-            {list.name}
-          </h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="page-title break-anywhere">{list.name}</h1>
+          <p className="text-xs text-muted-foreground sm:text-sm">
             {stats.remaining} remaining · ₹
             {stats.estimatedCost.toLocaleString("en-IN")} estimated
           </p>

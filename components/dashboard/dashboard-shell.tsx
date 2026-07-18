@@ -62,27 +62,36 @@ export function DashboardShell({
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex min-h-12 items-center gap-2 border-b border-border/60 bg-white/95 px-2 backdrop-blur-md safe-pt sm:min-h-14 sm:gap-3 sm:px-4 lg:min-h-16 lg:px-8">
+        <header className="sticky top-0 z-30 flex h-11 items-center gap-1.5 border-b border-border/60 bg-white/95 px-2 backdrop-blur-md safe-pt sm:h-14 sm:gap-3 sm:px-4 lg:h-16 lg:px-8">
           <Button
             variant="ghost"
             size="icon"
-            className="shrink-0 lg:hidden"
+            className="size-10 min-h-10 min-w-10 shrink-0 lg:hidden"
             onClick={() => setOpen(true)}
             aria-label="Open menu"
           >
             <Menu className="size-5" />
           </Button>
-          <div className="min-w-0 flex-1 py-1.5 sm:py-2">
-            <p className="truncate text-sm font-semibold text-gray-900">
-              HomeOS
+          <div className="min-w-0 flex-1">
+            {/* Single compact line on phones; two-line brand block on larger */}
+            <p className="truncate text-[13px] font-semibold leading-tight text-gray-900 sm:text-sm">
+              <span className="sm:hidden">{householdName}</span>
+              <span className="hidden sm:inline">HomeOS</span>
             </p>
-            <p className="truncate text-xs text-muted-foreground lg:hidden">
+            <p className="hidden truncate text-xs text-muted-foreground sm:block lg:hidden">
               {householdName}
             </p>
           </div>
         </header>
 
-        <main className="mx-auto w-full min-w-0 max-w-6xl flex-1 overflow-x-clip px-3 py-3 sm:px-5 sm:py-5 lg:px-8 lg:py-8 pb-mobile-nav lg:pb-8">
+        <main
+          className="mx-auto w-full min-w-0 max-w-6xl flex-1 overflow-x-clip pb-mobile-nav lg:pb-8"
+          style={{
+            paddingLeft: "max(var(--density-page-pad-x), var(--safe-left))",
+            paddingRight: "max(var(--density-page-pad-x), var(--safe-right))",
+            paddingTop: "var(--density-page-pad-y)",
+          }}
+        >
           {children}
         </main>
 

@@ -52,7 +52,7 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed top-[max(0.75rem,var(--safe-top))] bottom-[max(0.75rem,var(--safe-bottom))] left-1/2 z-50 grid w-[min(100%-1rem,28rem)] max-h-[calc(100dvh-1.5rem)] -translate-x-1/2 gap-4 overflow-y-auto overscroll-contain rounded-2xl bg-white p-4 text-sm shadow-xl ring-1 ring-foreground/10 outline-none sm:top-1/2 sm:bottom-auto sm:max-h-[min(92dvh,920px)] sm:w-full sm:max-w-md sm:-translate-y-1/2 sm:p-5 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "fixed top-[max(0.5rem,var(--safe-top))] bottom-[max(0.5rem,var(--safe-bottom))] left-1/2 z-50 grid w-[min(100%-0.75rem,28rem)] max-h-[calc(100dvh-1rem)] -translate-x-1/2 gap-3 overflow-y-auto overscroll-contain rounded-xl bg-white p-3 text-sm shadow-xl ring-1 ring-foreground/10 outline-none sm:top-1/2 sm:bottom-auto sm:max-h-[min(92dvh,920px)] sm:w-full sm:max-w-md sm:-translate-y-1/2 sm:gap-4 sm:rounded-2xl sm:p-5 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className
         )}
         onPointerDownOutside={(e) => {

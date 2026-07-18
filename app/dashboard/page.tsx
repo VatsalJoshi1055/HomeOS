@@ -35,17 +35,17 @@ export default async function DashboardPage() {
   ])
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+    <div className="page-stack">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-3">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight">
+          <h1 className="page-title">
             Hi, {profile?.full_name?.split(" ")[0] ?? "there"}
           </h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            {household?.name ?? "Your household"} · family shopping command center
+          <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
+            {household?.name ?? "Your household"} · shopping command center
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-2 sm:flex">
+        <div className="grid grid-cols-2 gap-1.5 sm:flex sm:gap-2">
           <CreateListDialog triggerLabel="Create List" />
           {lists[0] && (
             <Button asChild variant="outline" className="w-full sm:w-auto">
@@ -55,7 +55,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-4">
         <MetricCard
           label="Items remaining"
           value={String(metrics.remainingCount)}
@@ -73,13 +73,13 @@ export default async function DashboardPage() {
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-3 lg:grid-cols-2 lg:gap-6">
         <Card>
           <CardHeader>
             <CardTitle>Your lists</CardTitle>
             <CardDescription>Jump back into a shopping list.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-1.5 sm:space-y-2">
             {lists.length === 0 ? (
               <p className="text-sm text-gray-400">No lists yet — create one.</p>
             ) : (
@@ -87,7 +87,7 @@ export default async function DashboardPage() {
                 <Link
                   key={list.id}
                   href={`/dashboard/lists/${list.id}`}
-                  className="flex min-h-14 items-center justify-between gap-3 rounded-xl border border-border/60 px-3 py-3 hover:bg-amber-50/50"
+                  className="flex min-h-11 items-center justify-between gap-2 rounded-lg border border-border/60 px-2.5 py-2 hover:bg-amber-50/50 sm:min-h-14 sm:gap-3 sm:rounded-xl sm:px-3 sm:py-3"
                 >
                   <div className="flex items-center gap-2">
                     <ShoppingBag className="size-4 text-amber-500" />
@@ -107,13 +107,13 @@ export default async function DashboardPage() {
             <CardTitle>Family activity</CardTitle>
             <CardDescription>Who changed what, recently.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-2 sm:space-y-3">
             {activity.length === 0 ? (
               <p className="text-sm text-gray-400">No activity yet.</p>
             ) : (
               activity.map((a) => (
-                <div key={a.id} className="flex gap-3 text-sm">
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-semibold text-amber-700">
+                <div key={a.id} className="flex gap-2 text-xs sm:gap-3 sm:text-sm">
+                  <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-amber-100 text-[10px] font-semibold text-amber-700 sm:size-8 sm:text-xs">
                     {(a.actor_name ?? "?")
                       .split(" ")
                       .map((p) => p[0])
@@ -142,7 +142,7 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-3 lg:grid-cols-2 lg:gap-6">
         <Card>
           <CardHeader>
             <CardTitle>Recently added</CardTitle>
@@ -214,14 +214,18 @@ function MetricCard({
   icon: React.ComponentType<{ className?: string }>
 }) {
   return (
-    <Card>
-      <CardContent className="flex items-center gap-4 pt-1">
-        <div className="flex size-11 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
-          <Icon className="size-5" />
+    <Card className="py-2 md:py-4">
+      <CardContent className="flex items-center gap-2 pt-0 sm:gap-4 sm:pt-1">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600 sm:size-11 sm:rounded-xl">
+          <Icon className="size-3.5 sm:size-5" />
         </div>
-        <div>
-          <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="text-2xl font-semibold tracking-tight">{value}</p>
+        <div className="min-w-0">
+          <p className="truncate text-[10px] text-muted-foreground sm:text-xs">
+            {label}
+          </p>
+          <p className="truncate text-base font-semibold tracking-tight sm:text-2xl">
+            {value}
+          </p>
         </div>
       </CardContent>
     </Card>

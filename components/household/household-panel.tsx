@@ -107,12 +107,10 @@ export function HouseholdPanel({
   const inviteUrl = inviteState.inviteUrl ?? null
 
   return (
-    <div className="space-y-4 lg:space-y-6">
+    <div className="page-stack">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight lg:text-2xl">
-          Household
-        </h1>
-        <p className="mt-0.5 text-sm text-muted-foreground">
+        <h1 className="page-title">Household</h1>
+        <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
           Family details, members, and invites — all in one place.
         </p>
       </div>
@@ -173,7 +171,7 @@ export function HouseholdPanel({
             Everyone here can edit shared shopping lists in real time.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-2.5">
+        <CardContent className="space-y-1.5 sm:space-y-2.5">
           {members.map((m) => {
             const ownerCard =
               m.role === "OWNER" || m.id === household.created_by
@@ -182,11 +180,11 @@ export function HouseholdPanel({
                 key={m.id}
                 className={
                   ownerCard
-                    ? "flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50/60 px-3 py-3 sm:items-center"
-                    : "flex items-start gap-3 rounded-xl border border-border/60 bg-white px-3 py-3 sm:items-center"
+                    ? "flex items-center gap-2.5 rounded-lg border border-amber-300 bg-amber-50/60 px-2.5 py-2 sm:gap-3 sm:rounded-xl sm:px-3 sm:py-3"
+                    : "flex items-center gap-2.5 rounded-lg border border-border/60 bg-white px-2.5 py-2 sm:gap-3 sm:rounded-xl sm:px-3 sm:py-3"
                 }
               >
-                <Avatar className="size-11 shrink-0">
+                <Avatar className="size-9 shrink-0 sm:size-11">
                   <AvatarFallback
                     className={
                       ownerCard
