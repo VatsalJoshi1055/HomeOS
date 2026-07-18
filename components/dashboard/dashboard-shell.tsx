@@ -62,7 +62,7 @@ export function DashboardShell({
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex min-h-14 items-center gap-2 border-b border-border/60 bg-white/95 px-2 backdrop-blur-md safe-pt sm:gap-3 sm:px-4 lg:min-h-16 lg:px-8">
+        <header className="sticky top-0 z-30 flex min-h-12 items-center gap-2 border-b border-border/60 bg-white/95 px-2 backdrop-blur-md safe-pt sm:min-h-14 sm:gap-3 sm:px-4 lg:min-h-16 lg:px-8">
           <Button
             variant="ghost"
             size="icon"
@@ -72,7 +72,7 @@ export function DashboardShell({
           >
             <Menu className="size-5" />
           </Button>
-          <div className="min-w-0 flex-1 py-2">
+          <div className="min-w-0 flex-1 py-1.5 sm:py-2">
             <p className="truncate text-sm font-semibold text-gray-900">
               HomeOS
             </p>
@@ -82,7 +82,7 @@ export function DashboardShell({
           </div>
         </header>
 
-        <main className="mx-auto w-full min-w-0 max-w-6xl flex-1 overflow-x-clip px-3 py-4 sm:px-5 sm:py-6 lg:px-8 lg:py-8 pb-mobile-nav lg:pb-8">
+        <main className="mx-auto w-full min-w-0 max-w-6xl flex-1 overflow-x-clip px-3 py-3 sm:px-5 sm:py-5 lg:px-8 lg:py-8 pb-mobile-nav lg:pb-8">
           {children}
         </main>
 

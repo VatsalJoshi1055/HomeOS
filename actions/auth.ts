@@ -43,13 +43,13 @@ export async function signupAction(
     if (error) return { error: error.message }
     if (!data.user) return { error: "Signup failed. Please try again." }
 
-    // Ensure profile exists (trigger may have created it)
+    // Ensure profile exists (trigger defaults role to MEMBER).
+    // Do not set role here — that would wipe OWNER after household creation.
     await supabase.from("profiles").upsert(
       {
         id: data.user.id,
         full_name: fullName,
         email,
-        role: "MEMBER",
       },
       { onConflict: "id" }
     )

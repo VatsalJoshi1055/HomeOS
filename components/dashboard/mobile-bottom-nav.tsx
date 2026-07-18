@@ -19,7 +19,7 @@ export function MobileBottomNav() {
       style={{ paddingBottom: "var(--safe-bottom)" }}
       aria-label="Primary"
     >
-      <ul className="mx-auto grid h-[var(--mobile-nav-height)] max-w-lg grid-cols-4">
+      <ul className="mx-auto grid h-[var(--mobile-nav-height)] max-w-lg grid-cols-5">
         {DASHBOARD_NAV.map((item) => {
           const active = isActive(item.href)
           return (
@@ -27,7 +27,7 @@ export function MobileBottomNav() {
               <Link
                 href={item.href}
                 className={cn(
-                  "flex h-full min-w-0 flex-col items-center justify-center gap-0.5 px-0.5 text-[10px] font-medium transition-colors sm:px-1 sm:text-[11px]",
+                  "flex h-full min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 px-0.5 text-[9px] font-medium transition-colors sm:text-[10px]",
                   active ? "text-amber-600" : "text-gray-400"
                 )}
               >
@@ -35,7 +35,7 @@ export function MobileBottomNav() {
                   className={cn("size-5 shrink-0", active && "stroke-[2.25px]")}
                   aria-hidden
                 />
-                <span className="max-w-full truncate">{item.title}</span>
+                <span className="max-w-full truncate">{item.shortTitle}</span>
               </Link>
             </li>
           )

@@ -36,17 +36,17 @@ export function ListWorkspace({
   )
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+    <div className="space-y-3 lg:space-y-6">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-3">
         <div className="min-w-0 flex-1">
           <Link
             href="/dashboard/lists"
-            className="mb-2 inline-flex min-h-11 items-center gap-1 text-sm font-medium text-amber-600 hover:underline"
+            className="mb-1 inline-flex min-h-11 items-center gap-1 text-sm font-medium text-amber-600 hover:underline lg:mb-2"
           >
             <ChevronLeft className="size-4 shrink-0" />
             All lists
           </Link>
-          <h1 className="break-anywhere text-2xl font-semibold tracking-tight">
+          <h1 className="break-anywhere text-xl font-semibold tracking-tight lg:text-2xl">
             {list.name}
           </h1>
           <p className="text-sm text-muted-foreground">

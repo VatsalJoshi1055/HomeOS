@@ -31,6 +31,7 @@ The app launches in standalone mode with offline shell fallback at `/offline`.
    - `supabase/migrations/20260717000002_realtime_replica_identity.sql` (required for reliable live item sync)
    - `supabase/migrations/20260717000003_invite_lookup_rpc.sql` (required so invite links work for guests)
    - `supabase/migrations/20260717000004_accept_invite_by_email.sql` (required so invitees join after email confirm + sign-in)
+   - `supabase/migrations/20260717000005_repair_household_owners.sql` (restores OWNER role for household creators)
 3. Enable Email auth in Supabase. Set **Site URL** to your app URL and add redirect URLs:
    - `http://localhost:3000/auth/callback`
    - `https://YOUR-PRODUCTION-DOMAIN/auth/callback`

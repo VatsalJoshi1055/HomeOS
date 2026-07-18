@@ -31,23 +31,26 @@ export async function ensureHouseholdAfterAuth(
     user.user_metadata?.invite_token as string | undefined
   )?.trim()
 
+  // Never write role here — upserting MEMBER was wiping OWNER on every login.
   await supabase.from("profiles").upsert(
     {
       id: user.id,
       full_name: fullName,
       email: (user.email ?? "").toLowerCase(),
-      role: "MEMBER",
     },
     { onConflict: "id" }
   )
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("household_id")
+    .select("household_id, role")
     .eq("id", user.id)
     .maybeSingle()
 
-  if (profile?.household_id) return "has_household"
+  if (profile?.household_id) {
+    await repairCreatorOwnerRole(supabase, user.id, profile.household_id)
+    return "has_household"
+  }
 
   if (inviteToken) {
     const { error } = await supabase.rpc("accept_household_invite", {
@@ -78,6 +81,27 @@ export async function ensureHouseholdAfterAuth(
   }
 
   return "none"
+}
+
+/** If this user created the household, ensure their profile role is OWNER. */
+export async function repairCreatorOwnerRole(
+  supabase: Supabase,
+  userId: string,
+  householdId: string
+): Promise<void> {
+  const { data: household } = await supabase
+    .from("households")
+    .select("created_by")
+    .eq("id", householdId)
+    .maybeSingle()
+
+  if (!household || household.created_by !== userId) return
+
+  await supabase
+    .from("profiles")
+    .update({ role: "OWNER" })
+    .eq("id", userId)
+    .neq("role", "OWNER")
 }
 
 async function clearInviteToken(supabase: Supabase) {

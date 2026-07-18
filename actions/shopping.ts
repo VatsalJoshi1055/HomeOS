@@ -545,7 +545,9 @@ export async function updateHouseholdAction(
 
   try {
     const { profile, household } = await requireHousehold()
-    if (profile.role !== "OWNER") return { error: "Only owners can rename." }
+    if (profile.role !== "OWNER" && profile.id !== household.created_by) {
+      return { error: "Only owners can rename." }
+    }
 
     const supabase = await createClient()
     const { error } = await supabase
@@ -569,7 +571,9 @@ export async function inviteMemberAction(
 
   try {
     const { profile, household } = await requireHousehold()
-    if (profile.role !== "OWNER") return { error: "Only owners can invite." }
+    if (profile.role !== "OWNER" && profile.id !== household.created_by) {
+      return { error: "Only owners can invite." }
+    }
 
     const supabase = await createClient()
     const { data, error } = await supabase
@@ -594,10 +598,12 @@ export async function inviteMemberAction(
       `${profile.full_name} invited ${email}`
     )
 
-    revalidatePath("/dashboard/settings")
+    revalidatePath("/dashboard/household")
+    revalidatePath("/dashboard", "layout")
     return {
       success: true,
-      message: `Invite created. Share this link: ${inviteUrl}`,
+      message: "Invite link ready to share.",
+      inviteUrl,
     }
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Invite failed." }
@@ -669,7 +675,9 @@ export async function createHouseholdOnboardingAction(
 export async function deleteHouseholdAction(): Promise<ActionState> {
   try {
     const { profile, household } = await requireHousehold()
-    if (profile.role !== "OWNER") return { error: "Only owners can delete." }
+    if (profile.role !== "OWNER" && profile.id !== household.created_by) {
+      return { error: "Only owners can delete." }
+    }
 
     const supabase = await createClient()
     const { error } = await supabase

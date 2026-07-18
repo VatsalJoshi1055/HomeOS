@@ -349,7 +349,7 @@ export function ShoppingListBoard({
   }
 
   return (
-    <div className="space-y-3 sm:space-y-4">
+    <div className="space-y-2 sm:space-y-4">
       <div className="flex items-center justify-between gap-2">
         <p className="min-w-0 flex-1 text-xs text-gray-500">
           Live sync with your household
@@ -451,8 +451,9 @@ export function ShoppingListBoard({
             {selectMode ? "Done" : "Select"}
           </Button>
 
+          {/* Desktop/tablet only — mobile uses the sticky bottom Add Item */}
           <Button
-            className="col-span-2 bg-amber-500 text-white hover:bg-amber-600 sm:col-span-1 sm:ml-auto"
+            className="col-span-2 hidden bg-amber-500 text-white hover:bg-amber-600 lg:col-span-1 lg:ml-auto lg:inline-flex"
             onClick={() => setAddOpen(true)}
           >
             <Plus className="mr-1 size-4" />
@@ -519,15 +520,16 @@ export function ShoppingListBoard({
         </div>
       )}
 
-      <div className="space-y-2.5 pb-[calc(var(--mobile-cta-height)+0.75rem)] lg:pb-4">
+      <div className="space-y-1.5 pb-[calc(var(--mobile-cta-height)+0.5rem)] lg:space-y-2.5 lg:pb-4">
         {visible.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border/60 bg-white px-4 py-14 text-center">
+          <div className="rounded-2xl border border-dashed border-border/60 bg-white px-4 py-10 text-center lg:py-14">
             <p className="font-medium text-gray-700">No items yet</p>
             <p className="mt-1 text-sm text-gray-400">
               Add your first grocery item or try voice input.
             </p>
+            {/* Desktop empty-state CTA; mobile uses sticky Add Item */}
             <Button
-              className="mt-4 bg-amber-500 text-white hover:bg-amber-600"
+              className="mt-4 hidden bg-amber-500 text-white hover:bg-amber-600 lg:inline-flex"
               onClick={() => setAddOpen(true)}
             >
               <Plus className="mr-1 size-4" />
@@ -538,7 +540,7 @@ export function ShoppingListBoard({
           visible.map((item) => (
             <div
               key={item.id}
-              className={`flex items-stretch gap-3 rounded-2xl border bg-white p-3 shadow-sm transition-colors sm:p-4 ${
+              className={`flex items-stretch gap-2.5 rounded-xl border bg-white p-2.5 shadow-sm transition-colors sm:gap-3 sm:rounded-2xl sm:p-4 ${
                 selectMode && selected.has(item.id)
                   ? "border-amber-400 bg-amber-50/50"
                   : "border-border/60"
@@ -572,7 +574,7 @@ export function ShoppingListBoard({
               >
                 <div className="flex flex-wrap items-center gap-1.5">
                   <span
-                    className={`break-words text-[1.05rem] leading-snug font-medium sm:text-base ${
+                    className={`break-words text-[0.95rem] leading-snug font-medium sm:text-base ${
                       item.completed
                         ? "text-gray-400 line-through"
                         : "text-gray-900"
@@ -591,14 +593,14 @@ export function ShoppingListBoard({
                     </Badge>
                   )}
                 </div>
-                <p className="mt-1 text-sm text-gray-500">
+                <p className="mt-0.5 text-xs text-gray-500 sm:mt-1 sm:text-sm">
                   {item.quantity}
                   {item.unit ? ` ${item.unit}` : ""}
                   {item.estimated_price > 0
                     ? ` · ₹${Number(item.estimated_price).toFixed(0)}`
                     : ""}
                 </p>
-                <p className="mt-0.5 text-xs leading-relaxed text-gray-400">
+                <p className="mt-0.5 text-[11px] leading-snug text-gray-400 sm:text-xs sm:leading-relaxed">
                   {item.creator_name
                     ? `Added by ${item.creator_name}`
                     : "Added"}
@@ -662,7 +664,7 @@ export function ShoppingListBoard({
         }}
       >
         <Button
-          className="h-12 w-full bg-amber-500 text-base text-white hover:bg-amber-600"
+          className="h-11 w-full bg-amber-500 text-sm text-white hover:bg-amber-600 sm:text-base"
           onClick={() => setAddOpen(true)}
         >
           <Plus className="mr-1 size-5" />

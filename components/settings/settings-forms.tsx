@@ -1,17 +1,9 @@
 "use client"
 
-import { useActionState, useTransition } from "react"
-import { useRouter } from "next/navigation"
+import { useActionState } from "react"
 import { CheckCircle2, Loader2 } from "lucide-react"
-import { toast } from "sonner"
-import {
-  deleteHouseholdAction,
-  inviteMemberAction,
-  leaveHouseholdAction,
-  updateHouseholdAction,
-  updateProfileAction,
-} from "@/actions/shopping"
-import type { ActionState, Household, Profile } from "@/types/database"
+import { updateProfileAction } from "@/actions/shopping"
+import type { ActionState, Profile } from "@/types/database"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -25,43 +17,24 @@ import {
 
 const initial: ActionState = {}
 
-export function SettingsForms({
-  profile,
-  household,
-  isOwner,
-}: {
-  profile: Profile
-  household: Household
-  isOwner: boolean
-}) {
-  const router = useRouter()
+export function SettingsForms({ profile }: { profile: Profile }) {
   const [profileState, profileAction, profilePending] = useActionState(
     updateProfileAction,
     initial
   )
-  const [houseState, houseAction, housePending] = useActionState(
-    updateHouseholdAction,
-    initial
-  )
-  const [inviteState, inviteAction, invitePending] = useActionState(
-    inviteMemberAction,
-    initial
-  )
-  const [leaving, startLeave] = useTransition()
-  const [deleting, startDelete] = useTransition()
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 lg:space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle>Your profile</CardTitle>
-          <CardDescription>Update how your name appears to family.</CardDescription>
+        <CardHeader className="pb-3 lg:pb-6">
+          <CardTitle className="text-base lg:text-lg">Profile</CardTitle>
+          <CardDescription>
+            Update how your name appears to family.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form action={profileAction} className="max-w-md space-y-4">
-            {profileState.message && (
-              <Success msg={profileState.message} />
-            )}
+            {profileState.message && <Success msg={profileState.message} />}
             {profileState.error && <ErrorMsg msg={profileState.error} />}
             <div className="space-y-2">
               <Label htmlFor="full_name">Display name</Label>
@@ -80,154 +53,62 @@ export function SettingsForms({
             <Button
               type="submit"
               disabled={profilePending}
-              className="w-full bg-amber-500 text-white hover:bg-amber-600 sm:w-auto"
+              className="min-h-11 w-full bg-amber-500 text-white hover:bg-amber-600 sm:w-auto"
             >
-              {profilePending && <Loader2 className="mr-2 size-4 animate-spin" />}
+              {profilePending && (
+                <Loader2 className="mr-2 size-4 animate-spin" />
+              )}
               Save profile
             </Button>
           </form>
         </CardContent>
       </Card>
 
-      {isOwner && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Household name</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form action={houseAction} className="max-w-md space-y-4">
-              {houseState.message && <Success msg={houseState.message} />}
-              {houseState.error && <ErrorMsg msg={houseState.error} />}
-              <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  name="name"
-                  defaultValue={household.name}
-                  required
-                />
-              </div>
-              <Button
-                type="submit"
-                disabled={housePending}
-                className="w-full bg-amber-500 text-white hover:bg-amber-600 sm:w-auto"
-              >
-                {housePending && <Loader2 className="mr-2 size-4 animate-spin" />}
-                Save household
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      )}
-
-      {isOwner && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Invite members</CardTitle>
-            <CardDescription>
-              Send an invite link so family can join this household.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form action={inviteAction} className="max-w-md space-y-4">
-              {inviteState.message && <Success msg={inviteState.message} />}
-              {inviteState.error && <ErrorMsg msg={inviteState.error} />}
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  inputMode="email"
-                  autoComplete="email"
-                  required
-                  placeholder="family@example.com"
-                />
-              </div>
-              <Button
-                type="submit"
-                disabled={invitePending}
-                className="w-full bg-amber-500 text-white hover:bg-amber-600 sm:w-auto"
-              >
-                {invitePending && (
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                )}
-                Create invite link
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      )}
-
       <Card>
-        <CardHeader>
-          <CardTitle>Notifications</CardTitle>
+        <CardHeader className="pb-3 lg:pb-6">
+          <CardTitle className="text-base lg:text-lg">Appearance</CardTitle>
           <CardDescription>
-            Realtime updates are always on for connected family members.
+            HomeOS uses a light amber theme optimized for shopping outdoors and
+            indoors.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-gray-600">
-            Item changes sync instantly via Supabase Realtime. Keep this tab
-            open on your phone while shopping for live check-offs.
+            Theme is fixed to light mode for clarity on phones while grocery
+            shopping. Dark mode is not offered yet.
           </p>
         </CardContent>
       </Card>
 
-      <Card className="border-red-200">
-        <CardHeader>
-          <CardTitle className="text-red-700">Danger zone</CardTitle>
+      <Card>
+        <CardHeader className="pb-3 lg:pb-6">
+          <CardTitle className="text-base lg:text-lg">Notifications</CardTitle>
+          <CardDescription>
+            Realtime updates stay on for connected family members.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-          {!isOwner && (
-            <Button
-              variant="outline"
-              className="w-full sm:w-auto"
-              disabled={leaving}
-              onClick={() => {
-                if (!confirm("Leave this household?")) return
-                startLeave(async () => {
-                  const r = await leaveHouseholdAction()
-                  if (r.error) toast.error(r.error)
-                  else {
-                    toast.success("You left the household")
-                    router.push("/onboarding")
-                    router.refresh()
-                  }
-                })
-              }}
-            >
-              {leaving && <Loader2 className="mr-2 size-4 animate-spin" />}
-              Leave household
-            </Button>
-          )}
-          {isOwner && (
-            <Button
-              variant="destructive"
-              className="w-full sm:w-auto"
-              disabled={deleting}
-              onClick={() => {
-                if (
-                  !confirm(
-                    "Delete this household and ALL shopping data? This cannot be undone."
-                  )
-                )
-                  return
-                startDelete(async () => {
-                  const r = await deleteHouseholdAction()
-                  if (r.error) toast.error(r.error)
-                  else {
-                    toast.success("Household deleted")
-                    router.push("/onboarding")
-                    router.refresh()
-                  }
-                })
-              }}
-            >
-              {deleting && <Loader2 className="mr-2 size-4 animate-spin" />}
-              Delete household
-            </Button>
-          )}
+        <CardContent>
+          <p className="text-sm text-gray-600">
+            Item changes sync instantly via Supabase Realtime. Keep the list
+            open on your phone while shopping for live check-offs. Toast
+            messages appear when someone else updates a list.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3 lg:pb-6">
+          <CardTitle className="text-base lg:text-lg">
+            Application preferences
+          </CardTitle>
+          <CardDescription>
+            Defaults that keep HomeOS fast and reliable.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm text-gray-600">
+          <p>• Live sync reconnects automatically after sleep or offline.</p>
+          <p>• Voice input uses your device microphone when supported.</p>
+          <p>• Install HomeOS to your home screen for a full-screen shopping app.</p>
         </CardContent>
       </Card>
     </div>

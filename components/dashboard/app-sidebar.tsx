@@ -9,6 +9,7 @@ import {
   LogOut,
   Settings,
   ShoppingCart,
+  Users,
 } from "lucide-react"
 import { logoutAction } from "@/actions/auth"
 import { Button } from "@/components/ui/button"
@@ -16,10 +17,36 @@ import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 
 export const DASHBOARD_NAV = [
-  { title: "Home", href: "/dashboard", icon: LayoutDashboard },
-  { title: "Lists", href: "/dashboard/lists", icon: ShoppingCart },
-  { title: "Activity", href: "/dashboard/activity", icon: Activity },
-  { title: "Settings", href: "/dashboard/settings", icon: Settings },
+  {
+    title: "Dashboard",
+    shortTitle: "Home",
+    href: "/dashboard",
+    icon: LayoutDashboard,
+  },
+  {
+    title: "Grocery Lists",
+    shortTitle: "Lists",
+    href: "/dashboard/lists",
+    icon: ShoppingCart,
+  },
+  {
+    title: "Activity",
+    shortTitle: "Activity",
+    href: "/dashboard/activity",
+    icon: Activity,
+  },
+  {
+    title: "Household",
+    shortTitle: "Family",
+    href: "/dashboard/household",
+    icon: Users,
+  },
+  {
+    title: "Settings",
+    shortTitle: "Settings",
+    href: "/dashboard/settings",
+    icon: Settings,
+  },
 ] as const
 
 interface AppSidebarProps {
@@ -70,7 +97,7 @@ export function AppSidebar({
               )}
             >
               <item.icon className="size-5 shrink-0" />
-              {item.title === "Home" ? "Dashboard" : item.title === "Lists" ? "Shopping Lists" : item.title}
+              {item.title}
             </Link>
           )
         })}
