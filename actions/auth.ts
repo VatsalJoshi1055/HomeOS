@@ -2,9 +2,23 @@
 
 import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
+import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import { ensureHouseholdAfterAuth } from "@/lib/ensure-membership"
+import { INVITE_COOKIE } from "@/lib/invite-cookie"
+import { reportServerError, toErrorMessage } from "@/lib/errors-server"
 import type { ActionState } from "@/types/database"
+
+async function readInviteToken(formToken?: string) {
+  const fromForm = (formToken ?? "").trim()
+  if (fromForm) return fromForm
+  try {
+    const store = await cookies()
+    return store.get(INVITE_COOKIE)?.value?.trim() ?? ""
+  } catch {
+    return ""
+  }
+}
 
 export async function signupAction(
   _prev: ActionState,
@@ -17,7 +31,9 @@ export async function signupAction(
   const householdName =
     String(formData.get("household_name") ?? "").trim() ||
     `${fullName || "My"}'s Household`
-  const inviteToken = String(formData.get("invite_token") ?? "").trim()
+  const inviteToken = await readInviteToken(
+    String(formData.get("invite_token") ?? "")
+  )
 
   if (!fullName) return { error: "Full name is required." }
   if (!email) return { error: "Email is required." }
@@ -43,17 +59,6 @@ export async function signupAction(
     if (error) return { error: error.message }
     if (!data.user) return { error: "Signup failed. Please try again." }
 
-    // Ensure profile exists (trigger defaults role to MEMBER).
-    // Do not set role here — that would wipe OWNER after household creation.
-    await supabase.from("profiles").upsert(
-      {
-        id: data.user.id,
-        full_name: fullName,
-        email,
-      },
-      { onConflict: "id" }
-    )
-
     // No session yet (email confirmation required) — join/create on confirm or next login
     if (!data.session) {
       return {
@@ -67,6 +72,8 @@ export async function signupAction(
     const membership = await ensureHouseholdAfterAuth(supabase, {
       createIfMissing: !inviteToken,
       householdName,
+      inviteToken,
+      user: data.user,
     })
 
     if (membership === "none" && inviteToken) {
@@ -87,7 +94,8 @@ export async function signupAction(
     redirect("/dashboard")
   } catch (err) {
     if (err && typeof err === "object" && "digest" in err) throw err
-    console.error("[signupAction]", err)
+    const message = toErrorMessage(err, "Unable to create account. Please try again.")
+    await reportServerError("signup", message, { email })
     return { error: "Unable to create account. Please try again." }
   }
 }
@@ -98,21 +106,33 @@ export async function loginAction(
 ): Promise<ActionState> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase()
   const password = String(formData.get("password") ?? "")
+  const inviteToken = await readInviteToken(
+    String(formData.get("invite_token") ?? "")
+  )
 
   if (!email || !password) return { error: "Email and password are required." }
 
   try {
     const supabase = await createClient()
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
     if (error) return { error: error.message }
 
-    // Invitees who confirmed email often land on /login — join here.
-    await ensureHouseholdAfterAuth(supabase, { createIfMissing: false })
+    const membership = await ensureHouseholdAfterAuth(supabase, {
+      createIfMissing: false,
+      inviteToken,
+      user: data.user,
+    })
 
     revalidatePath("/", "layout")
+    if (membership === "none") redirect("/onboarding")
     redirect("/dashboard")
   } catch (err) {
     if (err && typeof err === "object" && "digest" in err) throw err
+    const message = toErrorMessage(err, "Unable to sign in. Please try again.")
+    await reportServerError("login", message, { email })
     return { error: "Unable to sign in. Please try again." }
   }
 }
@@ -135,7 +155,12 @@ export async function forgotPasswordAction(
       success: true,
       message: "Check your email for a password reset link.",
     }
-  } catch {
+  } catch (err) {
+    await reportServerError(
+      "forgot_password",
+      toErrorMessage(err, "Unable to send reset email."),
+      { email }
+    )
     return { error: "Unable to send reset email." }
   }
 }

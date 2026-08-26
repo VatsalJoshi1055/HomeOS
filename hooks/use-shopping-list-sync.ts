@@ -10,6 +10,8 @@ import {
 } from "@/lib/realtime-lifecycle"
 import type { ShoppingItem, ShoppingItemWithPeople } from "@/types/database"
 
+type PendingPatch = Partial<ShoppingItemWithPeople> & { _deleted?: boolean }
+
 function mapItemsWithNames(
   rows: Record<string, unknown>[],
   nameMap: Map<string, string>
@@ -52,6 +54,20 @@ function isTerminalStatus(status: string) {
   )
 }
 
+function mergePending(
+  items: ShoppingItemWithPeople[],
+  pending: Map<string, PendingPatch>
+): ShoppingItemWithPeople[] {
+  if (pending.size === 0) return items
+  const result: ShoppingItemWithPeople[] = []
+  for (const item of items) {
+    const patch = pending.get(item.id)
+    if (patch?._deleted) continue
+    result.push(patch ? { ...item, ...patch } : item)
+  }
+  return result
+}
+
 export function useShoppingListSync({
   listId,
   householdId,
@@ -69,6 +85,22 @@ export function useShoppingListSync({
   const nameCache = useRef<Map<string, string>>(new Map())
   const liveRef = useRef(false)
   const reconnectRef = useRef<(() => void) | null>(null)
+  const pendingRef = useRef<Map<string, PendingPatch>>(new Map())
+
+  const applyPending = useCallback((rows: ShoppingItemWithPeople[]) => {
+    return mergePending(rows, pendingRef.current)
+  }, [])
+
+  const setPendingPatch = useCallback((id: string, patch: PendingPatch) => {
+    pendingRef.current.set(id, {
+      ...pendingRef.current.get(id),
+      ...patch,
+    })
+  }, [])
+
+  const clearPending = useCallback((id: string) => {
+    pendingRef.current.delete(id)
+  }, [])
 
   const refreshItems = useCallback(async () => {
     const seq = ++refreshSeq.current
@@ -91,15 +123,22 @@ export function useShoppingListSync({
       return
     }
 
-    const nameMap = new Map(
-      (profiles ?? []).map((p) => [p.id as string, p.full_name as string])
+    const nameMap = new Map<string, string>(
+      ((profiles ?? []) as Array<{ id: string; full_name: string }>).map((p) => [
+        p.id,
+        p.full_name,
+      ])
     )
     nameCache.current = nameMap
 
     if (seq !== refreshSeq.current) return
 
-    setItems(mapItemsWithNames((rows ?? []) as Record<string, unknown>[], nameMap))
-  }, [listId, householdId])
+    setItems(
+      applyPending(
+        mapItemsWithNames((rows ?? []) as Record<string, unknown>[], nameMap)
+      )
+    )
+  }, [listId, householdId, applyPending])
 
   const applyItemChange = useCallback(
     (payload: RealtimePostgresChangesPayload<ShoppingItem>) => {
@@ -109,6 +148,11 @@ export function useShoppingListSync({
         const oldRow = payload.old as Partial<ShoppingItem>
         if (!oldRow.id) {
           void refreshItems()
+          return
+        }
+        const pending = pendingRef.current.get(oldRow.id)
+        if (pending && !pending._deleted) {
+          // Local add/update still in flight — ignore stale delete
           return
         }
         setItems((prev) => prev.filter((item) => item.id !== oldRow.id))
@@ -121,26 +165,27 @@ export function useShoppingListSync({
         return
       }
 
-      // Ignore events for other lists (defensive; filter should already scope)
       if (row.list_id && row.list_id !== listId) return
 
+      const pending = pendingRef.current.get(row.id)
+      if (pending?._deleted) return
+
       const next = withNames(row, nameCache.current)
+      const merged = pending ? { ...next, ...pending } : next
 
       setItems((prev) => {
-        const index = prev.findIndex((item) => item.id === next.id)
-        if (index === -1) return sortByOrder([...prev, next])
+        const index = prev.findIndex((item) => item.id === merged.id)
+        if (index === -1) return sortByOrder([...prev, merged])
         const copy = [...prev]
         copy[index] = {
           ...copy[index],
-          ...next,
-          // Keep known names if payload users aren't in cache yet
-          creator_name: next.creator_name ?? copy[index].creator_name,
-          completer_name: next.completer_name ?? copy[index].completer_name,
+          ...merged,
+          creator_name: merged.creator_name ?? copy[index].creator_name,
+          completer_name: merged.completer_name ?? copy[index].completer_name,
         }
         return sortByOrder(copy)
       })
 
-      // Fill missing profile names without blocking UI
       const candidateIds = [row.created_by, row.completed_by, row.updated_by]
       const missingIds = candidateIds.filter(
         (id): id is string => typeof id === "string" && !nameCache.current.has(id)
@@ -184,13 +229,11 @@ export function useShoppingListSync({
       clearRetry()
 
       try {
-        // Ensure JWT is fresh before (re)joining Realtime — critical on Safari
         await supabase.auth.getSession()
         await teardownChannel()
 
         if (cancelled) return
 
-        // Unique topic per connect avoids stuck Phoenix channel reuse after errors
         const topic = `shopping-list:${listId}:${Date.now()}`
 
         channel = supabase
@@ -203,10 +246,8 @@ export function useShoppingListSync({
               table: "shopping_items",
               filter: `list_id=eq.${listId}`,
             },
-            (payload) => {
-              applyItemChange(
-                payload as RealtimePostgresChangesPayload<ShoppingItem>
-              )
+            (payload: RealtimePostgresChangesPayload<ShoppingItem>) => {
+              applyItemChange(payload)
             }
           )
           .on(
@@ -217,7 +258,7 @@ export function useShoppingListSync({
               table: "activity_log",
               filter: `household_id=eq.${householdId}`,
             },
-            (payload) => {
+            (payload: { new: { actor_id?: string | null; list_id?: string | null; message?: string } }) => {
               const row = payload.new as {
                 actor_id?: string | null
                 list_id?: string | null
@@ -233,14 +274,13 @@ export function useShoppingListSync({
               }
             }
           )
-          .subscribe((status, err) => {
+          .subscribe((status: string, err?: Error) => {
             if (cancelled) return
 
             if (status === "SUBSCRIBED") {
               liveRef.current = true
               setLive(true)
               retryAttempt = 0
-              // Catch-up after (re)subscribe — covers missed events while down
               void refreshItems()
               return
             }
@@ -277,7 +317,6 @@ export function useShoppingListSync({
 
     const unbindLifecycle = bindRealtimeLifecycle({
       onResume: () => {
-        // Always reconcile after wake/focus/online — root fix for Safari→Chrome gaps
         void refreshItems()
         if (!liveRef.current) {
           reconnectRef.current?.()
@@ -296,5 +335,12 @@ export function useShoppingListSync({
     }
   }, [listId, householdId, currentUserId, refreshItems, applyItemChange])
 
-  return { items, setItems, live, refreshItems }
+  return {
+    items,
+    setItems,
+    live,
+    refreshItems,
+    setPendingPatch,
+    clearPending,
+  }
 }

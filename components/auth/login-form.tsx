@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 
 const initial: ActionState = {}
 
-export function LoginForm() {
+export function LoginForm({ inviteToken }: { inviteToken?: string }) {
   const [state, action, pending] = useActionState(loginAction, initial)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -20,6 +20,9 @@ export function LoginForm() {
 
   return (
     <form action={action} className="space-y-5">
+      {inviteToken ? (
+        <input type="hidden" name="invite_token" value={inviteToken} />
+      ) : null}
       {state.error && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {state.error}
@@ -97,7 +100,10 @@ export function LoginForm() {
 
       <p className="text-center text-sm text-gray-500">
         New to HomeOS?{" "}
-        <Link href="/signup" className="font-medium text-amber-600 hover:underline">
+        <Link
+          href={inviteToken ? `/signup?invite=${encodeURIComponent(inviteToken)}` : "/signup"}
+          className="font-medium text-amber-600 hover:underline"
+        >
           Create account
         </Link>
       </p>

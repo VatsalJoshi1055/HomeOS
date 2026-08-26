@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   LogOut,
   Settings,
+  Shield,
   ShoppingCart,
   Users,
 } from "lucide-react"
@@ -52,12 +53,14 @@ export const DASHBOARD_NAV = [
 interface AppSidebarProps {
   householdName: string
   userName: string
+  isDeveloper?: boolean
   onNavigate?: () => void
 }
 
 export function AppSidebar({
   householdName,
   userName,
+  isDeveloper = false,
   onNavigate,
 }: AppSidebarProps) {
   const pathname = usePathname()
@@ -101,6 +104,21 @@ export function AppSidebar({
             </Link>
           )
         })}
+        {isDeveloper && (
+          <Link
+            href="/dashboard/dev"
+            onClick={onNavigate}
+            className={cn(
+              "flex min-h-12 items-center gap-3 rounded-xl px-3.5 text-sm transition-colors",
+              pathname.startsWith("/dashboard/dev")
+                ? "bg-amber-50 font-medium text-amber-700"
+                : "text-muted-foreground hover:bg-gray-50 hover:text-foreground"
+            )}
+          >
+            <Shield className="size-5 shrink-0" />
+            Developer
+          </Link>
+        )}
       </nav>
 
       <div className="safe-pb border-t border-border/60 p-2">

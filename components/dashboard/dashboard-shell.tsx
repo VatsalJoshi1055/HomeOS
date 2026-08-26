@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Menu, X } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 import { AppSidebar } from "@/components/dashboard/app-sidebar"
 import { MobileBottomNav } from "@/components/dashboard/mobile-bottom-nav"
 import { Button } from "@/components/ui/button"
@@ -9,10 +10,14 @@ import { Button } from "@/components/ui/button"
 export function DashboardShell({
   householdName,
   userName,
+  userId,
+  isDeveloper = false,
   children,
 }: {
   householdName: string
   userName: string
+  userId: string
+  isDeveloper?: boolean
   children: React.ReactNode
 }) {
   const [open, setOpen] = useState(false)
@@ -26,11 +31,19 @@ export function DashboardShell({
     }
   }, [open])
 
+  useEffect(() => {
+    const supabase = createClient()
+    void supabase
+      .from("profiles")
+      .update({ last_seen_at: new Date().toISOString() })
+      .eq("id", userId)
+  }, [userId])
+
   return (
     <div className="flex min-h-dvh min-h-svh bg-[var(--background)]">
       <div className="hidden lg:block">
         <div className="sticky top-0 h-dvh h-svh">
-          <AppSidebar householdName={householdName} userName={userName} />
+          <AppSidebar householdName={householdName} userName={userName} isDeveloper={isDeveloper} />
         </div>
       </div>
 
@@ -46,6 +59,7 @@ export function DashboardShell({
             <AppSidebar
               householdName={householdName}
               userName={userName}
+              isDeveloper={isDeveloper}
               onNavigate={() => setOpen(false)}
             />
             <Button

@@ -70,15 +70,21 @@ export function LiveActivityFeed({
           .eq("household_id", householdId),
       ])
 
-    const names = new Map(
-      (profiles ?? []).map((p) => [p.id as string, p.full_name as string])
+    const names = new Map<string, string>(
+      ((profiles ?? []) as Array<{ id: string; full_name: string }>).map((p) => [
+        p.id,
+        p.full_name,
+      ])
     )
-    const listNames = new Map(
-      (lists ?? []).map((l) => [l.id as string, l.name as string])
+    const listNames = new Map<string, string>(
+      ((lists ?? []) as Array<{ id: string; name: string }>).map((l) => [
+        l.id,
+        l.name,
+      ])
     )
 
     setActivity(
-      (logs ?? []).map((row) => ({
+      ((logs ?? []) as ActivityLogWithActor[]).map((row) => ({
         ...(row as ActivityLogWithActor),
         actor_name: row.actor_id
           ? names.get(row.actor_id as string) ?? null
@@ -138,11 +144,8 @@ export function LiveActivityFeed({
               table: "activity_log",
               filter: `household_id=eq.${householdId}`,
             },
-            (payload) => {
-              const row = payload.new as {
-                actor_id?: string | null
-                message?: string
-              }
+            (payload: { new: { actor_id?: string | null; message?: string } }) => {
+              const row = payload.new
               if (
                 row.actor_id &&
                 row.actor_id !== currentUserId &&
@@ -153,7 +156,7 @@ export function LiveActivityFeed({
               void refresh()
             }
           )
-          .subscribe((status, err) => {
+          .subscribe((status: string, err?: Error) => {
             if (cancelled) return
 
             if (status === "SUBSCRIBED") {

@@ -1,4 +1,4 @@
-const CACHE_NAME = "homeos-shell-v2"
+const CACHE_NAME = "homeos-shell-v3"
 const SHELL_URLS = [
   "/",
   "/login",

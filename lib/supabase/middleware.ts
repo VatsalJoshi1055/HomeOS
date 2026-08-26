@@ -33,16 +33,30 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const path = request.nextUrl.pathname
+
+  const inviteMatch = path.match(/^\/invite\/([^/]+)\/?$/)
+  if (inviteMatch?.[1]) {
+    supabaseResponse.cookies.set("homeos_invite", inviteMatch[1], {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 14,
+    })
+  }
+
   const isAuthPage =
     path.startsWith("/login") ||
     path.startsWith("/signup") ||
     path.startsWith("/forgot-password")
   const isDashboard = path.startsWith("/dashboard")
   const isOnboarding = path.startsWith("/onboarding")
+  const isDev = path.startsWith("/dashboard/dev")
 
   if (!user && (isDashboard || isOnboarding)) {
     const url = request.nextUrl.clone()
     url.pathname = "/login"
+    if (isDev) url.searchParams.set("next", path)
     return NextResponse.redirect(url)
   }
 

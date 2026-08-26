@@ -11,7 +11,9 @@ import {
 import { toast } from "sonner"
 import {
   ArrowDownAZ,
+  Check,
   CheckCheck,
+  Keyboard,
   Loader2,
   Mic,
   MicOff,
@@ -19,16 +21,19 @@ import {
   Search,
   Trash2,
 } from "lucide-react"
+import { reportClientError } from "@/lib/errors"
+import { isStandalonePwa } from "@/lib/display-mode"
 import {
-  bulkCompleteAction,
-  bulkDeleteAction,
-  createItemAction,
-  createItemsBulkAction,
-  deleteItemAction,
-  duplicateItemAction,
-  toggleItemCompleteAction,
-  updateItemAction,
-} from "@/actions/shopping"
+  clientBulkComplete,
+  clientBulkDelete,
+  clientDeleteItem,
+  clientDuplicateItem,
+  clientInsertItem,
+  clientInsertItemsBulk,
+  clientToggleItem,
+  clientUpdateItem,
+} from "@/lib/shopping-client"
+import type { ItemPriority, ShoppingItem } from "@/types/database"
 import { ALL_CATEGORIES } from "@/lib/categories"
 import {
   describeSpeechError,
@@ -39,9 +44,8 @@ import {
 } from "@/lib/voice-parser"
 import { RelativeTime } from "@/components/relative-time"
 import { useShoppingListSync } from "@/hooks/use-shopping-list-sync"
-import type { ActionState, ShoppingItemWithPeople } from "@/types/database"
+import type { ShoppingItemWithPeople } from "@/types/database"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
@@ -58,6 +62,24 @@ type FilterMode = "all" | "remaining" | "done"
 type SortMode = "order" | "name" | "priority" | "category"
 
 const PRIORITY_ORDER = { HIGH: 0, MEDIUM: 1, LOW: 2 }
+
+function sortLocal(items: ShoppingItemWithPeople[]) {
+  return [...items].sort((a, b) => a.sort_order - b.sort_order)
+}
+
+function withPeople(
+  item: ShoppingItem,
+  currentUserId: string
+): ShoppingItemWithPeople {
+  const self =
+    currentUserId && item.created_by === currentUserId ? "You" : null
+  return {
+    ...item,
+    creator_name: self,
+    completer_name:
+      item.completed_by && item.completed_by === currentUserId ? "You" : null,
+  }
+}
 
 export function ShoppingListBoard({
   listId,
@@ -76,12 +98,13 @@ export function ShoppingListBoard({
     total: number
   }) => void
 }) {
-  const { items, setItems, live, refreshItems } = useShoppingListSync({
-    listId,
-    householdId,
-    currentUserId,
-    initialItems,
-  })
+  const { items, setItems, live, refreshItems, setPendingPatch, clearPending } =
+    useShoppingListSync({
+      listId,
+      householdId,
+      currentUserId,
+      initialItems,
+    })
 
   const [search, setSearch] = useState("")
   const [filter, setFilter] = useState<FilterMode>("all")
@@ -93,6 +116,9 @@ export function ShoppingListBoard({
   const [addOpen, setAddOpen] = useState(false)
   const [listening, setListening] = useState(false)
   const [voicePreview, setVoicePreview] = useState("")
+  const [typeOpen, setTypeOpen] = useState(false)
+  const [typeText, setTypeText] = useState("")
+  const [typePending, setTypePending] = useState(false)
   const voiceSupported = useSyncExternalStore(
     () => () => {},
     () => speechRecognitionSupported(),
@@ -147,61 +173,96 @@ export function ShoppingListBoard({
     return list
   }, [items, filter, categoryFilter, search, sort])
 
+  const nextSortOrder = useCallback(() => {
+    return Math.max(0, ...items.map((item) => item.sort_order)) + 1
+  }, [items])
+
   const toggle = useCallback(
     async (item: ShoppingItemWithPeople) => {
       const next = !item.completed
+      const patch = {
+        completed: next,
+        completed_at: next ? new Date().toISOString() : null,
+        completed_by: next ? currentUserId : null,
+      }
+      setPendingPatch(item.id, patch)
       setItems((prev) =>
-        prev.map((row) =>
-          row.id === item.id
-            ? {
-                ...row,
-                completed: next,
-                completed_at: next ? new Date().toISOString() : null,
-                completed_by: next ? currentUserId : null,
-              }
-            : row
-        )
+        prev.map((row) => (row.id === item.id ? { ...row, ...patch } : row))
       )
-      const result = await toggleItemCompleteAction(item.id, next)
+      const result = await clientToggleItem({
+        itemId: item.id,
+        householdId,
+        userId: currentUserId,
+        completed: next,
+      })
       if (result.error) {
+        clearPending(item.id)
         toast.error(result.error)
+        void reportClientError("toggle_item", result.error, { itemId: item.id })
         await refreshItems()
         return
       }
-      await refreshItems()
+      clearPending(item.id)
     },
-    [currentUserId, refreshItems, setItems]
+    [
+      currentUserId,
+      householdId,
+      refreshItems,
+      setItems,
+      setPendingPatch,
+      clearPending,
+    ]
   )
 
   async function handleDelete(item: ShoppingItemWithPeople) {
     undoRef.current = { item }
+    setPendingPatch(item.id, { _deleted: true })
     setItems((prev) => prev.filter((i) => i.id !== item.id))
-    const result = await deleteItemAction(item.id)
+    const result = await clientDeleteItem({
+      itemId: item.id,
+      householdId,
+    })
     if (result.error) {
+      clearPending(item.id)
       toast.error(result.error)
+      void reportClientError("delete_item", result.error, { itemId: item.id })
       await refreshItems()
       return
     }
+    clearPending(item.id)
     toast.success(`Removed ${item.title}`, {
       action: {
         label: "Undo",
         onClick: async () => {
-          const fd = new FormData()
-          fd.set("list_id", listId)
-          fd.set("title", item.title)
-          fd.set("quantity", String(item.quantity))
-          if (item.unit) fd.set("unit", item.unit)
-          if (item.category) fd.set("category", item.category)
-          if (item.notes) fd.set("notes", item.notes)
-          fd.set("estimated_price", String(item.estimated_price))
-          fd.set("priority", item.priority)
-          const undoResult = await createItemAction({}, fd)
-          if (undoResult.error) toast.error(undoResult.error)
-          await refreshItems()
+          const undo = await clientInsertItem({
+            listId,
+            householdId,
+            userId: currentUserId,
+            title: item.title,
+            quantity: item.quantity,
+            unit: item.unit,
+            category: item.category,
+            notes: item.notes,
+            estimated_price: item.estimated_price,
+            priority: item.priority,
+            sort_order: nextSortOrder(),
+          })
+          if (undo.error) {
+            toast.error(undo.error)
+            void reportClientError("undo_delete", undo.error)
+            return
+          }
+          if (undo.data) {
+            setItems((prev) =>
+              sortLocal([
+                ...prev.filter((row) => row.id !== undo.data!.id),
+                withPeople(undo.data!, currentUserId),
+              ])
+            )
+          }
         },
       },
     })
-    await refreshItems()
   }
 
   async function applyVoiceTranscript(transcript: string) {
@@ -210,10 +271,28 @@ export function ShoppingListBoard({
       toast.error(`Could not parse: "${transcript}"`)
       return
     }
-    const result = await createItemsBulkAction(listId, parsed)
-    if (result.error) toast.error(result.error)
-    else toast.success(`Added ${parsed.length} items from voice`)
-    await refreshItems()
+    const result = await clientInsertItemsBulk({
+      listId,
+      householdId,
+      userId: currentUserId,
+      sortStart: nextSortOrder(),
+      items: parsed,
+    })
+    if (result.error) {
+      toast.error(result.error)
+      void reportClientError("voice_add", result.error)
+      return
+    }
+    if (result.data?.length) {
+      setItems((prev) => {
+        const ids = new Set(prev.map((row) => row.id))
+        const extra = result.data!.filter((row) => !ids.has(row.id)).map((row) =>
+          withPeople(row, currentUserId)
+        )
+        return sortLocal([...prev, ...extra])
+      })
+    }
+    toast.success(`Added ${parsed.length} items from voice`)
   }
 
   function stopVoice() {
@@ -227,6 +306,7 @@ export function ShoppingListBoard({
   }
 
   async function ensureMicrophoneAccess(): Promise<boolean> {
+    if (isStandalonePwa()) return true
     if (!navigator.mediaDevices?.getUserMedia) return true
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
@@ -240,6 +320,11 @@ export function ShoppingListBoard({
     }
   }
 
+  function openTypeFallback(prefill = "") {
+    setTypeText(prefill)
+    setTypeOpen(true)
+  }
+
   async function startVoice() {
     if (listening) {
       stopVoice()
@@ -247,20 +332,21 @@ export function ShoppingListBoard({
     }
 
     if (isRestrictedSpeechEnvironment()) {
-      toast.error(
-        "Voice does not work in the Cursor browser. Open http://localhost:3000 in Chrome or Edge instead."
-      )
+      openTypeFallback()
       return
     }
 
     const SR = getSpeechRecognitionCtor()
     if (!SR) {
-      toast.error("Voice input is not supported in this browser. Try Chrome or Edge.")
+      openTypeFallback()
       return
     }
 
     const micOk = await ensureMicrophoneAccess()
-    if (!micOk) return
+    if (!micOk) {
+      openTypeFallback()
+      return
+    }
 
     voiceFinalRef.current = ""
     voiceHadErrorRef.current = false
@@ -273,12 +359,12 @@ export function ShoppingListBoard({
         ? navigator.language
         : "en-IN"
     recognition.interimResults = true
-    recognition.continuous = false
+    recognition.continuous = true
     recognition.maxAlternatives = 1
 
     recognition.onstart = () => {
       setListening(true)
-      toast.message("Listening… say your grocery items, then pause.")
+      toast.message("Listening… say your grocery items, then tap Stop.")
     }
 
     recognition.onresult = (event) => {
@@ -299,11 +385,26 @@ export function ShoppingListBoard({
 
     recognition.onerror = (event) => {
       voiceHadErrorRef.current = true
-      const message = describeSpeechError(event.error)
+      const code = event.error
       setListening(false)
       recognitionRef.current = null
       setVoicePreview("")
+      if (code === "aborted") return
+      if (
+        (code === "network" ||
+          code === "not-allowed" ||
+          code === "service-not-allowed") &&
+        isStandalonePwa()
+      ) {
+        toast.message(
+          "Voice isn't available in the installed app on this device. Type the items instead."
+        )
+        openTypeFallback()
+        return
+      }
+      const message = describeSpeechError(code)
       if (message) toast.error(message)
+      if (code === "network" || code === "not-allowed") openTypeFallback()
     }
 
     recognition.onend = () => {
@@ -317,7 +418,7 @@ export function ShoppingListBoard({
 
       if (hadError) return
       if (!transcript) {
-        toast.message("No items captured. Tap Voice and try again.")
+        toast.message("No items captured. Tap Voice and try again, or type them.")
         return
       }
       void applyVoiceTranscript(transcript)
@@ -328,9 +429,8 @@ export function ShoppingListBoard({
     } catch {
       setListening(false)
       recognitionRef.current = null
-      toast.error(
-        "Could not start voice recognition. Wait a second and try again."
-      )
+      toast.error("Could not start voice recognition. Type the items instead.")
+      openTypeFallback()
     }
   }
 
@@ -423,13 +523,13 @@ export function ShoppingListBoard({
         </div>
 
         <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:gap-2">
-          {voiceSupported && (
+          {voiceSupported ? (
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => void startVoice()}
-              className="h-10 min-h-10 gap-1 sm:h-11 sm:min-h-11"
+              className="h-10 min-h-10 gap-1 touch-manipulation sm:h-11 sm:min-h-11"
               aria-pressed={listening}
             >
               {listening ? (
@@ -438,6 +538,17 @@ export function ShoppingListBoard({
                 <Mic className="size-3.5 sm:size-4" />
               )}
               {listening ? "Stop" : "Voice"}
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => openTypeFallback()}
+              className="h-10 min-h-10 gap-1 touch-manipulation sm:h-11 sm:min-h-11"
+            >
+              <Keyboard className="size-3.5 sm:size-4" />
+              Quick add
             </Button>
           )}
 
@@ -498,9 +609,37 @@ export function ShoppingListBoard({
             variant="outline"
             disabled={selected.size === 0}
             onClick={async () => {
-              await bulkCompleteAction(listId, [...selected])
+              const ids = [...selected]
+              setItems((prev) =>
+                prev.map((row) =>
+                  ids.includes(row.id)
+                    ? {
+                        ...row,
+                        completed: true,
+                        completed_at: new Date().toISOString(),
+                        completed_by: currentUserId,
+                      }
+                    : row
+                )
+              )
+              ids.forEach((id) =>
+                setPendingPatch(id, {
+                  completed: true,
+                  completed_by: currentUserId,
+                })
+              )
               exitSelectMode()
-              await refreshItems()
+              const result = await clientBulkComplete({
+                householdId,
+                userId: currentUserId,
+                itemIds: ids,
+              })
+              ids.forEach((id) => clearPending(id))
+              if (result.error) {
+                toast.error(result.error)
+                void reportClientError("bulk_complete", result.error)
+                await refreshItems()
+              }
             }}
           >
             <CheckCheck className="mr-1 size-3.5" />
@@ -511,10 +650,21 @@ export function ShoppingListBoard({
             variant="destructive"
             disabled={selected.size === 0}
             onClick={async () => {
-              if (!confirm(`Delete ${selected.size} items?`)) return
-              await bulkDeleteAction(listId, [...selected])
+              const ids = [...selected]
+              if (!confirm(`Delete ${ids.length} items?`)) return
+              setItems((prev) => prev.filter((row) => !ids.includes(row.id)))
+              ids.forEach((id) => setPendingPatch(id, { _deleted: true }))
               exitSelectMode()
-              await refreshItems()
+              const result = await clientBulkDelete({
+                householdId,
+                itemIds: ids,
+              })
+              ids.forEach((id) => clearPending(id))
+              if (result.error) {
+                toast.error(result.error)
+                void reportClientError("bulk_delete", result.error)
+                await refreshItems()
+              }
             }}
           >
             <Trash2 className="mr-1 size-3.5" />
@@ -550,13 +700,18 @@ export function ShoppingListBoard({
               } ${item.completed && !selectMode ? "opacity-60" : ""}`}
             >
               <div className="flex size-11 shrink-0 items-center justify-center">
-                <Checkbox
-                  checked={selectMode ? selected.has(item.id) : item.completed}
-                  onCheckedChange={() => {
+                <button
+                  type="button"
+                  className={`flex size-7 items-center justify-center rounded-md border shadow-xs transition-colors touch-manipulation sm:size-7 sm:rounded-lg ${
+                    (selectMode ? selected.has(item.id) : item.completed)
+                      ? "border-amber-500 bg-amber-500 text-white"
+                      : "border-gray-300 bg-white"
+                  }`}
+                  onClick={() => {
                     if (selectMode) toggleSelect(item.id)
-                    else toggle(item)
+                    else void toggle(item)
                   }}
-                  className="size-5 rounded-md sm:size-7 sm:rounded-lg"
+                  aria-pressed={selectMode ? selected.has(item.id) : item.completed}
                   aria-label={
                     selectMode
                       ? `Select ${item.title}`
@@ -564,7 +719,11 @@ export function ShoppingListBoard({
                         ? `Mark ${item.title} as needed`
                         : `Mark ${item.title} bought`
                   }
-                />
+                >
+                  {(selectMode ? selected.has(item.id) : item.completed) && (
+                    <Check className="size-4" />
+                  )}
+                </button>
               </div>
 
               <button
@@ -644,8 +803,24 @@ export function ShoppingListBoard({
                   className="hidden sm:inline-flex"
                   aria-label={`Duplicate ${item.title}`}
                   onClick={async () => {
-                    await duplicateItemAction(item.id)
-                    await refreshItems()
+                    const result = await clientDuplicateItem({
+                      item,
+                      householdId,
+                      userId: currentUserId,
+                    })
+                    if (result.error) {
+                      toast.error(result.error)
+                      void reportClientError("duplicate_item", result.error)
+                      return
+                    }
+                    if (result.data) {
+                      setItems((prev) =>
+                        sortLocal([
+                          ...prev.filter((row) => row.id !== result.data!.id),
+                          withPeople(result.data!, currentUserId),
+                        ])
+                      )
+                    }
                   }}
                 >
                   <ArrowDownAZ className="size-4" />
@@ -685,18 +860,81 @@ export function ShoppingListBoard({
         open={addOpen}
         onOpenChange={setAddOpen}
         listId={listId}
+        householdId={householdId}
+        userId={currentUserId}
+        sortOrder={nextSortOrder()}
         titleRef={titleRef}
-        onSaved={refreshItems}
+        onCreated={(item) => {
+          setItems((prev) =>
+            sortLocal([
+              ...prev.filter((row) => row.id !== item.id),
+              withPeople(item, currentUserId),
+            ])
+          )
+        }}
       />
 
       {editing && (
         <EditItemDialog
           item={editing}
+          householdId={householdId}
+          userId={currentUserId}
           open={!!editing}
           onOpenChange={(o) => !o && setEditing(null)}
-          onSaved={refreshItems}
+          onUpdated={(item) => {
+            setItems((prev) =>
+              prev.map((row) =>
+                row.id === item.id ? { ...row, ...withPeople(item, currentUserId) } : row
+              )
+            )
+          }}
         />
       )}
+
+      <Dialog open={typeOpen} onOpenChange={setTypeOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Quick add</DialogTitle>
+          </DialogHeader>
+          <form
+            className="space-y-3"
+            onSubmit={async (e) => {
+              e.preventDefault()
+              const transcript = typeText.trim()
+              if (!transcript) return
+              setTypePending(true)
+              try {
+                await applyVoiceTranscript(transcript)
+                setTypeText("")
+                setTypeOpen(false)
+              } finally {
+                setTypePending(false)
+              }
+            }}
+          >
+            <p className="text-sm text-muted-foreground">
+              Type items the same way you would say them — e.g. “milk and chicken and rice”.
+            </p>
+            <Textarea
+              value={typeText}
+              onChange={(e) => setTypeText(e.target.value)}
+              rows={3}
+              autoFocus
+              placeholder="milk and eggs and two kilos rice"
+            />
+            <DialogFooter>
+              <Button
+                type="submit"
+                disabled={typePending || !typeText.trim()}
+                className="w-full bg-amber-500 text-white hover:bg-amber-600 sm:w-auto"
+              >
+                {typePending && <Loader2 className="mr-2 size-4 animate-spin" />}
+                Add items
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -705,20 +943,23 @@ function AddItemDialog({
   open,
   onOpenChange,
   listId,
+  householdId,
+  userId,
+  sortOrder,
   titleRef,
-  onSaved,
+  onCreated,
 }: {
   open: boolean
   onOpenChange: (o: boolean) => void
   listId: string
+  householdId: string
+  userId: string
+  sortOrder: number
   titleRef: React.RefObject<HTMLInputElement | null>
-  onSaved: () => Promise<void> | void
+  onCreated: (item: ShoppingItem) => void
 }) {
-  const [state, action, pending] = useFormAction(createItemAction, async () => {
-    onOpenChange(false)
-    toast.success("Item added")
-    await onSaved()
-  })
+  const [error, setError] = useState<string | null>(null)
+  const [pending, setPending] = useState(false)
 
   useEffect(() => {
     if (open) setTimeout(() => titleRef.current?.focus(), 50)
@@ -730,9 +971,58 @@ function AddItemDialog({
         <DialogHeader>
           <DialogTitle>Add item</DialogTitle>
         </DialogHeader>
-        <form action={action} className="space-y-3">
-          <input type="hidden" name="list_id" value={listId} />
-          {state.error && <p className="text-sm text-red-600">{state.error}</p>}
+        <form
+          className="space-y-3"
+          onSubmit={async (e) => {
+            e.preventDefault()
+            const form = e.currentTarget
+            const fd = new FormData(form)
+            const title = String(fd.get("title") ?? "").trim()
+            if (!title) {
+              setError("Item title is required.")
+              return
+            }
+            setPending(true)
+            setError(null)
+            try {
+              const result = await clientInsertItem({
+                listId,
+                householdId,
+                userId,
+                title,
+                quantity: parseFloat(String(fd.get("quantity") ?? "1")) || 1,
+                unit: String(fd.get("unit") ?? "").trim() || null,
+                category: String(fd.get("category") ?? "").trim() || null,
+                notes: String(fd.get("notes") ?? "").trim() || null,
+                estimated_price:
+                  parseFloat(String(fd.get("estimated_price") ?? "0")) || 0,
+                priority: (String(fd.get("priority") ?? "MEDIUM") ||
+                  "MEDIUM") as ItemPriority,
+                sort_order: sortOrder,
+              })
+              if (result.error || !result.data) {
+                const message = result.error ?? "Failed to add item."
+                setError(message)
+                toast.error(message)
+                void reportClientError("add_item", message)
+                return
+              }
+              onCreated(result.data)
+              onOpenChange(false)
+              form.reset()
+              toast.success("Item added")
+            } catch (err) {
+              const message =
+                err instanceof Error ? err.message : "Failed to add item."
+              setError(message)
+              toast.error(message)
+              void reportClientError("add_item", message)
+            } finally {
+              setPending(false)
+            }
+          }}
+        >
+          {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="space-y-2">
             <Label htmlFor="title">Title</Label>
             <Input id="title" name="title" required ref={titleRef} />
@@ -800,20 +1090,21 @@ function AddItemDialog({
 
 function EditItemDialog({
   item,
+  householdId,
+  userId,
   open,
   onOpenChange,
-  onSaved,
+  onUpdated,
 }: {
   item: ShoppingItemWithPeople
+  householdId: string
+  userId: string
   open: boolean
   onOpenChange: (o: boolean) => void
-  onSaved: () => Promise<void> | void
+  onUpdated: (item: ShoppingItem) => void
 }) {
-  const [state, action, pending] = useFormAction(updateItemAction, async () => {
-    onOpenChange(false)
-    toast.success("Item updated")
-    await onSaved()
-  })
+  const [error, setError] = useState<string | null>(null)
+  const [pending, setPending] = useState(false)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -821,10 +1112,55 @@ function EditItemDialog({
         <DialogHeader>
           <DialogTitle>Edit item</DialogTitle>
         </DialogHeader>
-        <form action={action} className="space-y-3">
-          <input type="hidden" name="id" value={item.id} />
-          <input type="hidden" name="list_id" value={item.list_id} />
-          {state.error && <p className="text-sm text-red-600">{state.error}</p>}
+        <form
+          className="space-y-3"
+          onSubmit={async (e) => {
+            e.preventDefault()
+            const fd = new FormData(e.currentTarget)
+            const title = String(fd.get("title") ?? "").trim()
+            if (!title) {
+              setError("Item title is required.")
+              return
+            }
+            setPending(true)
+            setError(null)
+            try {
+              const result = await clientUpdateItem({
+                itemId: item.id,
+                householdId,
+                userId,
+                title,
+                quantity: parseFloat(String(fd.get("quantity") ?? "1")) || 1,
+                unit: String(fd.get("unit") ?? "").trim() || null,
+                category: String(fd.get("category") ?? "").trim() || null,
+                notes: String(fd.get("notes") ?? "").trim() || null,
+                estimated_price:
+                  parseFloat(String(fd.get("estimated_price") ?? "0")) || 0,
+                priority: (String(fd.get("priority") ?? "MEDIUM") ||
+                  "MEDIUM") as ItemPriority,
+              })
+              if (result.error || !result.data) {
+                const message = result.error ?? "Failed to update item."
+                setError(message)
+                toast.error(message)
+                void reportClientError("update_item", message)
+                return
+              }
+              onUpdated(result.data)
+              onOpenChange(false)
+              toast.success("Item updated")
+            } catch (err) {
+              const message =
+                err instanceof Error ? err.message : "Failed to update item."
+              setError(message)
+              toast.error(message)
+              void reportClientError("update_item", message)
+            } finally {
+              setPending(false)
+            }
+          }}
+        >
+          {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="space-y-2">
             <Label htmlFor="edit-title">Title</Label>
             <Input id="edit-title" name="title" required defaultValue={item.title} />
@@ -899,23 +1235,3 @@ function EditItemDialog({
   )
 }
 
-function useFormAction(
-  serverAction: (prev: ActionState, fd: FormData) => Promise<ActionState>,
-  onSuccess?: () => void | Promise<void>
-) {
-  const [state, setState] = useState<ActionState>({})
-  const [pending, setPending] = useState(false)
-
-  async function action(formData: FormData) {
-    setPending(true)
-    try {
-      const result = await serverAction({}, formData)
-      setState(result)
-      if (result.success) await onSuccess?.()
-    } finally {
-      setPending(false)
-    }
-  }
-
-  return [state, action, pending] as const
-}

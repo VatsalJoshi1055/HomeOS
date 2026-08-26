@@ -74,6 +74,16 @@ export default async function InvitePage({
         <p className="mt-1 text-sm text-gray-500">
           Create your HomeOS account to join this household.
         </p>
+        <p className="mt-2 text-sm text-gray-500">
+          Already have an account?{" "}
+          <a
+            href={`/login?invite=${encodeURIComponent(token)}`}
+            className="font-medium text-amber-600 hover:underline"
+          >
+            Sign in
+          </a>{" "}
+          to join.
+        </p>
         <div className="mt-6">
           <SignupForm inviteToken={token} />
         </div>

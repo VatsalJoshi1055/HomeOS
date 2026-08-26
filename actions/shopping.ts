@@ -4,9 +4,13 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requireHousehold, requireProfile } from "@/lib/household"
 import { detectCategory } from "@/lib/categories"
+import { reportServerError } from "@/lib/errors-server"
 import type { ActionState, ItemPriority } from "@/types/database"
 
+type ServerSupabase = Awaited<ReturnType<typeof createClient>>
+
 async function logActivity(
+  supabase: ServerSupabase,
   householdId: string,
   actorId: string,
   action: string,
@@ -14,8 +18,7 @@ async function logActivity(
   listId?: string | null,
   itemId?: string | null
 ) {
-  const supabase = await createClient()
-  await supabase.from("activity_log").insert({
+  const { error } = await supabase.from("activity_log").insert({
     household_id: householdId,
     actor_id: actorId,
     action,
@@ -23,14 +26,9 @@ async function logActivity(
     list_id: listId ?? null,
     item_id: itemId ?? null,
   })
-}
-
-function formatItemList(titles: string[]): string {
-  const cleaned = titles.map((t) => t.trim()).filter(Boolean)
-  if (cleaned.length === 0) return "items"
-  if (cleaned.length === 1) return cleaned[0]
-  if (cleaned.length === 2) return `${cleaned[0]} and ${cleaned[1]}`
-  return `${cleaned.slice(0, -1).join(", ")} and ${cleaned[cleaned.length - 1]}`
+  if (error) {
+    await reportServerError("logActivity", error.message, { action })
+  }
 }
 
 export async function createListAction(
@@ -56,6 +54,7 @@ export async function createListAction(
     if (error) return { error: error.message }
 
     await logActivity(
+      supabase,
       household.id,
       profile.id,
       "list_created",
@@ -92,6 +91,7 @@ export async function deleteListAction(listId: string): Promise<ActionState> {
     if (error) return { error: error.message }
 
     await logActivity(
+      supabase,
       household.id,
       profile.id,
       "list_deleted",
@@ -159,19 +159,6 @@ export async function createItemAction(
       .single()
 
     if (error) return { error: error.message }
-
-    await logActivity(
-      household.id,
-      profile.id,
-      "item_added",
-      `${profile.full_name} added ${title}`,
-      listId,
-      data.id
-    )
-
-    revalidatePath(`/dashboard/lists/${listId}`)
-    revalidatePath("/dashboard")
-    revalidatePath("/dashboard/activity")
     return { success: true, message: data.id }
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Failed to add item." }
@@ -213,17 +200,6 @@ export async function createItemsBulkAction(
 
     const { error } = await supabase.from("shopping_items").insert(rows)
     if (error) return { error: error.message }
-
-    await logActivity(
-      household.id,
-      profile.id,
-      "items_bulk_added",
-      `${profile.full_name} added ${formatItemList(items.map((i) => i.title))} via voice`,
-      listId
-    )
-
-    revalidatePath(`/dashboard/lists/${listId}`)
-    revalidatePath("/dashboard")
     return { success: true }
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Failed to add items." }
@@ -235,7 +211,6 @@ export async function updateItemAction(
   formData: FormData
 ): Promise<ActionState> {
   const id = String(formData.get("id") ?? "").trim()
-  const listId = String(formData.get("list_id") ?? "").trim()
   const title = String(formData.get("title") ?? "").trim()
   const quantity = parseFloat(String(formData.get("quantity") ?? "1")) || 1
   const unit = String(formData.get("unit") ?? "").trim() || null
@@ -269,18 +244,6 @@ export async function updateItemAction(
       .eq("household_id", household.id)
 
     if (error) return { error: error.message }
-
-    await logActivity(
-      household.id,
-      profile.id,
-      "item_updated",
-      `${profile.full_name} updated ${title}`,
-      listId,
-      id
-    )
-
-    revalidatePath(`/dashboard/lists/${listId}`)
-    revalidatePath("/dashboard/activity")
     return { success: true }
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Failed to update item." }
@@ -317,21 +280,6 @@ export async function toggleItemCompleteAction(
       .eq("household_id", household.id)
 
     if (error) return { error: error.message }
-
-    await logActivity(
-      household.id,
-      profile.id,
-      completed ? "item_completed" : "item_reopened",
-      completed
-        ? `${profile.full_name} completed ${item.title}`
-        : `${profile.full_name} reopened ${item.title}`,
-      item.list_id,
-      itemId
-    )
-
-    revalidatePath(`/dashboard/lists/${item.list_id}`)
-    revalidatePath("/dashboard")
-    revalidatePath("/dashboard/activity")
     return { success: true }
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Failed to update item." }
@@ -340,7 +288,7 @@ export async function toggleItemCompleteAction(
 
 export async function deleteItemAction(itemId: string): Promise<ActionState> {
   try {
-    const { profile, household } = await requireHousehold()
+    const { household } = await requireHousehold()
     const supabase = await createClient()
 
     const { data: item } = await supabase
@@ -359,18 +307,6 @@ export async function deleteItemAction(itemId: string): Promise<ActionState> {
       .eq("household_id", household.id)
 
     if (error) return { error: error.message }
-
-    await logActivity(
-      household.id,
-      profile.id,
-      "item_deleted",
-      `${profile.full_name} removed ${item.title}`,
-      item.list_id
-    )
-
-    revalidatePath(`/dashboard/lists/${item.list_id}`)
-    revalidatePath("/dashboard")
-    revalidatePath("/dashboard/activity")
     return { success: true, message: item.list_id }
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Failed to delete item." }
@@ -408,8 +344,6 @@ export async function duplicateItemAction(itemId: string): Promise<ActionState> 
     })
 
     if (error) return { error: error.message }
-
-    revalidatePath(`/dashboard/lists/${item.list_id}`)
     return { success: true }
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Failed to duplicate." }
@@ -439,17 +373,6 @@ export async function bulkCompleteAction(
       .eq("household_id", household.id)
 
     if (error) return { error: error.message }
-
-    await logActivity(
-      household.id,
-      profile.id,
-      "bulk_complete",
-      `${profile.full_name} completed ${itemIds.length} items`,
-      listId
-    )
-
-    revalidatePath(`/dashboard/lists/${listId}`)
-    revalidatePath("/dashboard")
     return { success: true }
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Bulk complete failed." }
@@ -462,7 +385,7 @@ export async function bulkDeleteAction(
 ): Promise<ActionState> {
   if (!itemIds.length) return { error: "No items selected." }
   try {
-    const { profile, household } = await requireHousehold()
+    const { household } = await requireHousehold()
     const supabase = await createClient()
 
     const { error } = await supabase
@@ -472,17 +395,6 @@ export async function bulkDeleteAction(
       .eq("household_id", household.id)
 
     if (error) return { error: error.message }
-
-    await logActivity(
-      household.id,
-      profile.id,
-      "bulk_delete",
-      `${profile.full_name} deleted ${itemIds.length} items`,
-      listId
-    )
-
-    revalidatePath(`/dashboard/lists/${listId}`)
-    revalidatePath("/dashboard")
     return { success: true }
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Bulk delete failed." }
@@ -507,7 +419,6 @@ export async function reorderItemsAction(
       )
     )
 
-    revalidatePath(`/dashboard/lists/${listId}`)
     return { success: true }
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Reorder failed." }
@@ -592,6 +503,7 @@ export async function inviteMemberAction(
     const inviteUrl = `${siteUrl}/invite/${data.token}`
 
     await logActivity(
+      supabase,
       household.id,
       profile.id,
       "member_invited",
@@ -621,6 +533,7 @@ export async function leaveHouseholdAction(): Promise<ActionState> {
 
     const supabase = await createClient()
     await logActivity(
+      supabase,
       household.id,
       profile.id,
       "member_left",

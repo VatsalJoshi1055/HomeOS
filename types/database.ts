@@ -19,6 +19,7 @@ export interface Profile {
   role: HouseholdRole
   avatar_url: string | null
   created_at: string
+  last_seen_at?: string | null
 }
 
 export interface ShoppingList {

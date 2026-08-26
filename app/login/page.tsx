@@ -2,7 +2,12 @@ import Link from "next/link"
 import { Home } from "lucide-react"
 import { LoginForm } from "@/components/auth/login-form"
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ invite?: string }>
+}) {
+  const { invite } = await searchParams
   return (
     <div className="flex min-h-dvh min-h-svh">
       <div className="hidden w-1/2 flex-col justify-between bg-gradient-to-br from-amber-500 via-amber-400 to-orange-300 p-10 text-white lg:flex">
@@ -40,7 +45,7 @@ export default function LoginPage() {
             Sign in to your household shopping space.
           </p>
           <div className="mt-8">
-            <LoginForm />
+            <LoginForm inviteToken={invite} />
           </div>
         </div>
       </div>

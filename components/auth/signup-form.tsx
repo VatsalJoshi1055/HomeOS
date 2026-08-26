@@ -145,7 +145,10 @@ export function SignupForm({ inviteToken }: { inviteToken?: string }) {
 
       <p className="text-center text-sm text-gray-500">
         Already have an account?{" "}
-        <Link href="/login" className="font-medium text-amber-600 hover:underline">
+        <Link
+          href={inviteToken ? `/login?invite=${encodeURIComponent(inviteToken)}` : "/login"}
+          className="font-medium text-amber-600 hover:underline"
+        >
           Sign in
         </Link>
       </p>

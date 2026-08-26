@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
     // Keep HomeOS self-contained when a parent lockfile exists.
     root: path.join(__dirname),
   },
+  experimental: {
+    optimizePackageImports: ["lucide-react", "radix-ui"],
+  },
 };
 
 export default nextConfig;

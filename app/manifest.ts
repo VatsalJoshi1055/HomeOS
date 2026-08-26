@@ -8,6 +8,7 @@ export default function manifest(): MetadataRoute.Manifest {
       "Real-time collaborative grocery lists for your household.",
     start_url: "/dashboard",
     scope: "/",
+    id: "/",
     display: "standalone",
     orientation: "portrait-primary",
     background_color: "#fffaf3",

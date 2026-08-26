@@ -2,7 +2,12 @@ import Link from "next/link"
 import { Home } from "lucide-react"
 import { SignupForm } from "@/components/auth/signup-form"
 
-export default function SignupPage() {
+export default async function SignupPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ invite?: string }>
+}) {
+  const { invite } = await searchParams
   return (
     <div className="flex min-h-dvh min-h-svh">
       <div className="hidden w-1/2 flex-col justify-between bg-gradient-to-br from-amber-500 via-amber-400 to-orange-300 p-10 text-white lg:flex">
@@ -35,12 +40,16 @@ export default function SignupPage() {
               HomeOS
             </Link>
           </div>
-          <h2 className="text-2xl font-semibold text-gray-900">Create account</h2>
+          <h2 className="text-2xl font-semibold text-gray-900">
+            {invite ? "Join household" : "Create account"}
+          </h2>
           <p className="mt-1 text-sm text-gray-500">
-            You&apos;ll become the household owner.
+            {invite
+              ? "Create your account to join the family shopping list."
+              : "You'll become the household owner."}
           </p>
           <div className="mt-8">
-            <SignupForm />
+            <SignupForm inviteToken={invite} />
           </div>
         </div>
       </div>

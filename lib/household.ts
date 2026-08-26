@@ -1,21 +1,44 @@
+import { cache } from "react"
 import { createClient } from "@/lib/supabase/server"
 import type { Household, Profile } from "@/types/database"
 
+export const getAuthContext = cache(async () => {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) {
+    return { user: null, profile: null as Profile | null, household: null as Household | null }
+  }
+
+  const { data } = await supabase
+    .from("profiles")
+    .select("*, household:households(*)")
+    .eq("id", user.id)
+    .maybeSingle()
+
+  if (!data) {
+    return { user, profile: null as Profile | null, household: null as Household | null }
+  }
+
+  const { household: joinedHousehold, ...profileFields } = data as Profile & {
+    household: Household | Household[] | null
+  }
+  const household = Array.isArray(joinedHousehold)
+    ? (joinedHousehold[0] ?? null)
+    : joinedHousehold
+
+  return {
+    user,
+    profile: profileFields as Profile,
+    household: (household as Household | null) ?? null,
+  }
+})
+
 export async function getCurrentProfile(): Promise<Profile | null> {
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) return null
-
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .maybeSingle()
-
-    return (data as Profile | null) ?? null
+    const { profile } = await getAuthContext()
+    return profile
   } catch {
     return null
   }
@@ -29,17 +52,8 @@ export async function requireProfile(): Promise<Profile> {
 
 export async function getCurrentHousehold(): Promise<Household | null> {
   try {
-    const profile = await getCurrentProfile()
-    if (!profile?.household_id) return null
-
-    const supabase = await createClient()
-    const { data } = await supabase
-      .from("households")
-      .select("*")
-      .eq("id", profile.household_id)
-      .maybeSingle()
-
-    return (data as Household | null) ?? null
+    const { household } = await getAuthContext()
+    return household
   } catch {
     return null
   }
@@ -49,18 +63,10 @@ export async function requireHousehold(): Promise<{
   profile: Profile
   household: Household
 }> {
-  const profile = await requireProfile()
-  if (!profile.household_id) throw new Error("No household found.")
-
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from("households")
-    .select("*")
-    .eq("id", profile.household_id)
-    .maybeSingle()
-
-  if (error || !data) throw new Error("Household not found.")
-  return { profile, household: data as Household }
+  const { profile, household } = await getAuthContext()
+  if (!profile) throw new Error("Not authenticated.")
+  if (!household) throw new Error("No household found.")
+  return { profile, household }
 }
 
 export function initials(name: string): string {

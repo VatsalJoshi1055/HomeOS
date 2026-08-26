@@ -127,7 +127,7 @@ export default function ViewportPreviewPage() {
   }
 
   return (
-    <DashboardShell householdName="Joshi's Family Household" userName="Vatsal Joshi">
+    <DashboardShell householdName="Joshi's Family Household" userName="Vatsal Joshi" userId="preview">
       <div className="space-y-8">
         <section className="space-y-3" data-testid="preview-dashboard">
           <h1 className="break-anywhere text-2xl font-semibold tracking-tight">
